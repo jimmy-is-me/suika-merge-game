@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suika Merge Game</title>
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --surface: rgba(255,255,255,0.82);
+      --border: rgba(40,37,29,0.12);
+      --text: #28251d;
+      --muted: #6f6b62;
+      --accent: #01696f;
+      --accent-2: #e8f4f2;
+      --danger: #a93f44;
+      --cup-line: rgba(1,105,111,0.32);
+      --warn-line: rgba(217,119,6,0.6);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, #ffffff 0%, #f7f2eb 40%, var(--bg) 100%);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .app {
+      width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 14px 36px rgba(0,0,0,0.08);
+      backdrop-filter: blur(10px);
+    }
+    .sidebar { padding: 22px; }
+    h1 { margin: 0 0 10px; font-size: 26px; line-height: 1.1; }
+    p { margin: 0 0 12px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .stats { display: grid; gap: 12px; margin: 16px 0; }
+    .card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(40,37,29,0.08);
+    }
+    .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    .value { margin-top: 4px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .next-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .next-preview {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: #fff; border: 2px dashed rgba(40,37,29,0.14);
+      display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
+    }
+    .next-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .controls { display: grid; gap: 10px; margin: 16px 0 0; }
+    button {
+      appearance: none; border: 0; cursor: pointer; border-radius: 12px;
+      padding: 12px 14px; font-size: 15px; font-weight: 700;
+      transition: transform .15s ease, background-color .15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    .primary { background: var(--accent); color: #fff; }
+    .secondary { background: #fff; color: var(--text); border: 1px solid rgba(40,37,29,0.1); }
+    .legend {
+      margin-top: 14px; padding: 12px 14px; border-radius: 14px;
+      background: var(--accent-2); color: #0f4b50; font-size: 13px; line-height: 1.6;
+    }
+    .item-list { margin-top: 14px; }
+    .item-list-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+    .item-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 10px; font-size: 13px;
+      transition: background .15s;
+    }
+    .item-row:hover { background: rgba(1,105,111,0.06); }
+    .item-thumb {
+      width: 36px; height: 36px; border-radius: 50%;
+      overflow: hidden; flex: 0 0 auto;
+      border: 1.5px solid rgba(40,37,29,0.1);
+      background: #f0ede6;
+    }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-info { flex: 1; }
+    .item-name { font-weight: 600; color: var(--text); }
+    .item-meta { font-size: 11px; color: var(--muted); }
+    .item-score { font-weight: 700; color: var(--accent); font-size: 13px; }
+    .board-wrap { position: relative; padding: 18px; }
+    .board-shell { position: relative; width: 520px; max-width: 100%; margin: 0 auto; }
+    canvas {
+      display: block; width: 100%; height: auto;
+      border-radius: 28px;
+      background: linear-gradient(180deg, #faf8f4 0%, #f0ede6 100%);
+      border: 1px solid rgba(40,37,29,0.08);
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .preview-token {
+      position: absolute; top: 46px;
+      border-radius: 50%; pointer-events: none;
+      transform: translateX(-50%);
+      border: 2.5px solid rgba(255,255,255,0.8);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+      overflow: hidden; background: #fff;
+      opacity: 0.9; z-index: 3;
+      transition: left .08s ease, width .2s ease, height .2s ease;
+    }
+    .preview-token img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .drop-guide {
+      position: absolute; top: 96px; bottom: 50px;
+      width: 1.5px;
+      background: linear-gradient(180deg, rgba(1,105,111,0.25), rgba(1,105,111,0));
+      transform: translateX(-50%);
+      pointer-events: none; z-index: 2;
+      transition: left .08s ease;
+    }
+    .overlay {
+      position: absolute; inset: 18px;
+      display: none; align-items: center; justify-content: center; z-index: 6;
+    }
+    .overlay.show { display: flex; }
+    .overlay-card {
+      width: min(340px, calc(100% - 28px));
+      background: rgba(255,255,255,0.96); border: 1px solid rgba(40,37,29,0.12);
+      border-radius: 20px; padding: 22px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.13); text-align: center;
+    }
+    .overlay-card h2 { margin: 0 0 8px; color: var(--danger); font-size: 24px; }
+    .overlay-card p { color: var(--muted); margin-bottom: 16px; }
+    .overflow-warn {
+      position: absolute; right: 26px;
+      font-size: 11.5px; color: rgba(217,119,6,0.85);
+      font-weight: 600; pointer-events: none; z-index: 4;
+      letter-spacing: .04em;
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .board-wrap { order: -1; }
+      .sidebar { padding: 18px; }
+      .board-shell { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel sidebar">
+      <h1>🍹 Merge Game</h1>
+      <p>移動滑鼠／手指決定落點，點擊投放。兩個相同等級碰撞後合併升級。別讓球堆到橘色虛線！</p>
+
+      <div class="stats">
+        <div class="card">
+          <div class="label">Score</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="card next-box">
+          <div>
+            <div class="label">Next</div>
+            <div style="font-size:12px;color:var(--muted)">下一顆</div>
+          </div>
+          <div class="next-preview"><img id="nextImg" alt="next"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="restartBtn">🔄 重新開始</button>
+      </div>
+
+      <div class="legend">
+        📁 圖片放這裡：<strong>assets/images/item-1.png</strong> 到 <strong>item-5.png</strong><br>
+        修改 JS 裡的 <strong>ITEMS</strong> 陣列，換圖片路徑即可。<br>
+        建議：200×200px 以上、圓形、透明背景 PNG。
+      </div>
+
+      <div class="item-list">
+        <div class="item-list-title">Items 對照表</div>
+        <div id="itemList"></div>
+      </div>
+    </aside>
+
+    <section class="panel board-wrap">
+      <div class="board-shell" id="boardShell">
+        <div class="preview-token" id="previewToken"><img id="previewImg" alt="preview"></div>
+        <div class="drop-guide" id="dropGuide"></div>
+        <div class="overlay" id="gameOverOverlay">
+          <div class="overlay-card">
+            <h2>Game Over</h2>
+            <p id="finalScore">你的分數：0</p>
+            <button class="primary" id="restartBtn2">再玩一次</button>
+          </div>
+        </div>
+        <canvas id="game" width="520" height="760"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ==============================================================
+    //  ✏️  在這裡修改你的素材
+    //  image: 填入圖片路徑，例如 './assets/images/item-1.png'
+    //  radius: 碰撞半徑 (px)，建議等比例遞增
+    //  score: 合併時得分
+    //  name: 顯示名稱
+    // ==============================================================
+    const ITEMS = [
+      { level: 0, name: 'Level 1', radius: 22, score: 10,  image: './assets/images/item-1.png' },
+      { level: 1, name: 'Level 2', radius: 30, score: 20,  image: './assets/images/item-2.png' },
+      { level: 2, name: 'Level 3', radius: 40, score: 40,  image: './assets/images/item-3.png' },
+      { level: 3, name: 'Level 4', radius: 52, score: 80,  image: './assets/images/item-4.png' },
+      { level: 4, name: 'Level 5', radius: 66, score: 160, image: './assets/images/item-5.png' }
+    ];
+    // ==============================================================
+
+    const { Engine, Render, Runner, Bodies, Body, Composite, Events, Vector } = Matter;
+
+    // 圖片不存在時，自動 fallback 到 SVG 色塊
+    const FALLBACK_COLORS = ['#7bc8a4','#f2a65a','#9c89ff','#ef6f6c','#01696f'];
+    function svgFallback(level) {
+      const labels = ['A','B','C','D','E'];
+      const bg = FALLBACK_COLORS[level] || '#aaa';
+      return `data:image/svg+xml;utf8,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+          <defs>
+            <radialGradient id="g" cx="35%" cy="30%" r="75%">
+              <stop offset="0%" stop-color="#ffffff55"/>
+              <stop offset="40%" stop-color="${bg}"/>
+              <stop offset="100%" stop-color="#00000018"/>
+            </radialGradient>
+          </defs>
+          <circle cx="128" cy="128" r="120" fill="url(#g)"/>
+          <circle cx="90" cy="82" r="30" fill="#ffffff22"/>
+          <text x="128" y="147" font-family="Inter,Arial,sans-serif" font-size="88" font-weight="800" text-anchor="middle" fill="#fff">${labels[level] || level}</text>
+        </svg>
+      `)};
+    }
+
+    // 預載圖片，失敗就用 fallback
+    const resolvedImages = [];
+    let loadedCount = 0;
+    function preloadImages(callback) {
+      ITEMS.forEach((item, i) => {
+        const img = new Image();
+        img.onload = () => { resolvedImages[i] = item.image; check(); };
+        img.onerror = () => { resolvedImages[i] = svgFallback(i); check(); };
+        img.src = item.image;
+      });
+      function check() {
+        loadedCount++;
+        if (loadedCount === ITEMS.length) callback();
+      }
+    }
+
+    const canvas = document.getElementById('game');
+    const boardShell = document.getElementById('boardShell');
+    const scoreEl = document.getElementById('score');
+    const nextImg = document.getElementById('nextImg');
+    const previewToken = document.getElementById('previewToken');
+    const previewImg = document.getElementById('previewImg');
+    const dropGuide = document.getElementById('dropGuide');
+    const overlay = document.getElementById('gameOverOverlay');
+    const finalScore = document.getElementById('finalScore');
+    const restartBtns = [document.getElementById('restartBtn'), document.getElementById('restartBtn2')];
+    const itemListEl = document.getElementById('itemList');
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const wallThickness = 40;
+    const dropY = 120;
+    const gameOverY = 152;
+    const cupLeft = 48;
+    const cupRight = 48;
+    const cupBottom = 26;
+    const cupTopVisual = 140;
+    const overflowDelayMs = 1300;
+
+    let engine, render, runner;
+    let score = 0;
+    let currentX = width / 2;
+    let nextLevel = 0;
+    let canDrop = true;
+    let isGameOver = false;
+    let overflowStart = null;
+
+    function buildItemList() {
+      itemListEl.innerHTML = '';
+      ITEMS.forEach((item, i) => {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-thumb"><img src="${resolvedImages[i]}" alt="${item.name}"></div>
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            <div class="item-meta">radius: ${item.radius}px &nbsp;·&nbsp; <span style="font-family:monospace">${item.image}</span></div>
+          </div>
+          <div class="item-score">+${item.score}</div>
+        `;
+        itemListEl.appendChild(row);
+      });
+    }
+
+    function randSpawnLevel() { return Math.floor(Math.random() * Math.min(3, ITEMS.length)); }
+    function updateScore(v) { score = v; scoreEl.textContent = String(score); }
+
+    function setNext(level) {
+      const src = resolvedImages[level];
+      nextImg.src = src;
+      previewImg.src = src;
+      const sz = Math.max(50, Math.min(90, ITEMS[level].radius * 2));
+      previewToken.style.width = sz + 'px';
+      previewToken.style.height = sz + 'px';
+    }
+
+    function clampX(x, level) {
+      const r = ITEMS[level].radius;
+      return Math.max(cupLeft + r + 2, Math.min(width - cupRight - r - 2, x));
+    }
+
+    function updatePreview() {
+      const rect = canvas.getBoundingClientRect();
+      const vx = (currentX / width) * rect.width;
+      previewToken.style.left = vx + 'px';
+      dropGuide.style.left = vx + 'px';
+    }
+
+    function makeBall(x, y, level) {
+      const item = ITEMS[level];
+      const body = Bodies.circle(x, y, item.radius, {
+        restitution: 0.08, friction: 0.03, frictionAir: 0.01, density: 0.0015,
+        render: {
+          sprite: {
+            texture: resolvedImages[level],
+            xScale: (item.radius * 2) / 256,
+            yScale: (item.radius * 2) / 256
+          }
+        }
+      });
+      body.level = level;
+      body.isMergeBall = true;
+      body.hasMerged = false;
+      return body;
+    }
+
+    function drawDecos() {
+      const ctx = render.context;
+      ctx.save();
+      // Cup outline
+      ctx.strokeStyle = 'rgba(1,105,111,0.30)';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cupLeft, cupTopVisual);
+      ctx.lineTo(cupLeft, height - cupBottom);
+      ctx.lineTo(width - cupRight, height - cupBottom);
+      ctx.lineTo(width - cupRight, cupTopVisual);
+      ctx.stroke();
+      // overflow warning line
+      ctx.strokeStyle = 'rgba(217,119,6,0.65)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(cupLeft + 14, gameOverY);
+      ctx.lineTo(width - cupRight - 14, gameOverY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(217,119,6,0.78)';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillText('▲ overflow line', width - 160, gameOverY - 7);
+      ctx.restore();
+    }
+
+    function createWorld() {
+      engine = Engine.create(); engine.gravity.y = 1;
+      render = Render.create({
+        canvas, engine,
+        options: { width, height, wireframes: false, background: 'transparent' }
+      });
+      const floor = Bodies.rectangle(width/2, height + wallThickness/2 - cupBottom, width - 60, wallThickness, { isStatic: true, render: { fillStyle: '#d2ccbf' } });
+      const lw = Bodies.rectangle(cupLeft/2, height/2+26, wallThickness, height-110, { isStatic: true, render: { fillStyle: '#dcd6c8' } });
+      const rw = Bodies.rectangle(width - cupRight/2, height/2+26, wallThickness, height-110, { isStatic: true, render: { fillStyle: '#dcd6c8' } });
+      Composite.add(engine.world, [floor, lw, rw]);
+      Render.run(render);
+      runner = Runner.create();
+      Runner.run(runner, engine);
+      Events.on(engine, 'collisionStart', onCollision);
+      Events.on(engine, 'beforeUpdate', checkOverflow);
+      Events.on(render, 'afterRender', drawDecos);
+    }
+
+    function dropBall() {
+      if (!canDrop || isGameOver) return;
+      const level = nextLevel;
+      const x = clampX(currentX, level);
+      Composite.add(engine.world, makeBall(x, dropY, level));
+      canDrop = false;
+      nextLevel = randSpawnLevel();
+      setNext(nextLevel);
+      currentX = clampX(currentX, nextLevel);
+      updatePreview();
+      setTimeout(() => { canDrop = true; }, 270);
+    }
+
+    function onCollision(event) {
+      for (const pair of event.pairs) {
+        const a = pair.bodyA, b = pair.bodyB;
+        if (!a.isMergeBall || !b.isMergeBall) continue;
+        if (a.level !== b.level) continue;
+        if (a.hasMerged || b.hasMerged) continue;
+        const next = a.level + 1;
+        if (!ITEMS[next]) continue;
+        a.hasMerged = true; b.hasMerged = true;
+        const pos = Vector.create((a.position.x+b.position.x)/2, (a.position.y+b.position.y)/2);
+        setTimeout(() => {
+          Composite.remove(engine.world, a);
+          Composite.remove(engine.world, b);
+          Composite.add(engine.world, makeBall(pos.x, pos.y, next));
+          updateScore(score + ITEMS[next].score);
+        }, 24);
+      }
+    }
+
+    function checkOverflow() {
+      if (isGameOver) return;
+      const over = Composite.allBodies(engine.world).some(body => {
+        if (!body.isMergeBall) return false;
+        return body.position.y - ITEMS[body.level].radius < gameOverY;
+      });
+      if (over) {
+        if (!overflowStart) overflowStart = performance.now();
+        if (performance.now() - overflowStart > overflowDelayMs) {
+          isGameOver = true; canDrop = false;
+          overlay.classList.add('show');
+          finalScore.textContent = `你的分數：${score}`;
+        }
+      } else { overflowStart = null; }
+    }
+
+    function bindInput() {
+      // Mouse
+      canvas.addEventListener('mousemove', e => {
+        if (isGameOver) return;
+        const rect = canvas.getBoundingClientRect();
+        currentX = clampX(((e.clientX - rect.left) / rect.width) * width, nextLevel);
+        updatePreview();
+      });
+      canvas.addEventListener('click', () => dropBall());
+
+      // Touch
+      let lastTouchX = null;
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        lastTouchX = t.clientX;
+        currentX = clampX(((t.clientX - rect.left) / rect.width) * width, nextLevel);
+        updatePreview();
+      }, { passive: false });
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (isGameOver) return;
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        currentX = clampX(((t.clientX - rect.left) / rect.width) * width, nextLevel);
+        updatePreview();
+      }, { passive: false });
+      canvas.addEventListener('touchend', e => {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        if (Math.abs(t.clientX - lastTouchX) < 8) dropBall();
+      }, { passive: false });
+
+      window.addEventListener('resize', updatePreview);
+    }
+
+    function destroyWorld() {
+      if (render) {
+        Events.off(render, 'afterRender', drawDecos);
+        Render.stop(render);
+        render.canvas.getContext('2d').clearRect(0, 0, width, height);
+        render.textures = {};
+      }
+      if (runner) Runner.stop(runner);
+      if (engine) {
+        Events.off(engine, 'collisionStart', onCollision);
+        Events.off(engine, 'beforeUpdate', checkOverflow);
+        Composite.clear(engine.world, false);
+        Engine.clear(engine);
+      }
+    }
+
+    function startGame() {
+      destroyWorld();
+      overlay.classList.remove('show');
+      updateScore(0);
+      isGameOver = false; canDrop = true; overflowStart = null;
+      nextLevel = randSpawnLevel();
+      currentX = clampX(width / 2, nextLevel);
+      setNext(nextLevel);
+      createWorld();
+      updatePreview();
+    }
+
+    restartBtns.forEach(btn => btn.addEventListener('click', startGame));
+    bindInput();
+    preloadImages(() => {
+      buildItemList();
+      startGame();
+    });
+  </script>
+</body>
+</html>
