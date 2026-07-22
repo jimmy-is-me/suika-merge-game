@@ -220,6 +220,28 @@
     }
     .tip span { color: var(--text); font-weight: 800; }
 
+    /* keyboard hint */
+    .kbd-hint {
+      padding: 8px 12px; border-radius: 13px;
+      background: rgba(80,120,255,0.06);
+      border: 1px solid rgba(80,120,255,0.15);
+      font-size: 11px; color: var(--muted); font-weight: 600;
+      line-height: 1.6;
+      flex-shrink: 0;
+    }
+    .kbd-hint kbd {
+      display: inline-block;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 5px;
+      padding: 0px 5px;
+      font-size: 10.5px;
+      font-family: inherit;
+      font-weight: 800;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.10);
+      color: var(--text);
+    }
+
     /* ── Launcher at bottom ── */
     .launcher-token {
       position: absolute;
@@ -256,7 +278,6 @@
       z-index: 2;
       transition: left .06s ease;
     }
-    /* dashed overlay on the guide */
     .shoot-guide::after {
       content: '';
       position: absolute;
@@ -405,6 +426,11 @@
 
     <button class="btn" id="restartBtn">🔄 重新開始</button>
 
+    <div class="kbd-hint">
+      ⌨️ <kbd>A</kbd> 左移 &nbsp;<kbd>D</kbd> 右移<br>
+      <kbd>Space</kbd> 射出飲料
+    </div>
+
     <div class="divider"></div>
 
     <div class="section-label">飲料合併表</div>
@@ -419,7 +445,7 @@
   <section class="panel board-wrap">
     <div class="board-shell" id="boardShell">
 
-      <!-- launcher at bottom (replaces top preview) -->
+      <!-- launcher at bottom -->
       <div class="launcher-token" id="launcherToken"><img id="launcherImg" alt=""></div>
       <!-- shoot guide going upward -->
       <div class="shoot-guide" id="shootGuide"></div>
@@ -500,19 +526,33 @@ const finalBsEl  = document.getElementById('finalBest');
 const itemListEl = document.getElementById('itemList');
 
 const W = canvas.width, H = canvas.height;
-const WALL_T = 40;
-const LAUNCH_Y = H - 40;      // where balls are launched FROM (bottom)
-const GAME_OVER_Y = 80;       // overflow line near top
-const CUP_L = 44, CUP_R = 44, CUP_BOT = 24, CUP_TOP_VIS = 64;
+const WALL_T   = 40;
+const CUP_L    = 44, CUP_R = 44, CUP_BOT = 24, CUP_TOP_VIS = 64;
+
+// ── 修正 1: 警戒線與視覺杯口一致 ──
+// GAME_OVER_Y 設在杯口往下一點，讓溢出判斷正確
+const GAME_OVER_Y    = CUP_TOP_VIS + 10;   // = 74px (杯口下方10px)
 const OVERFLOW_DELAY = 1400;
-// Upward launch speed (pixels/second in Matter units)
-const LAUNCH_SPEED = 18;
+
+// ── 修正 2: 發射位置與速度 ──
+// 發射台在視覺底部平台中央 (y = H - 40)
+// 球生成在台面上方，並給予適當向上速度讓它能落進杯中
+const PLATFORM_Y    = H - 40;              // 發射台中心 y
+// 初始向上速度 (Matter 單位/tick)；適度讓球自然拋物落下
+const LAUNCH_SPEED  = 22;
+
+// 鍵盤移動速度 (canvas px / 按鍵事件)
+const KEY_STEP = 12;
 
 let engine, render, runner;
 let score=0, best=0, merges=0, maxLevel=0;
 let currentX=W/2, nextLevel=0;
 let canDrop=true, isGameOver=false;
 let overflowStart=null, comboCount=0, comboTimer=null;
+
+// 記錄目前按住的鍵，用 rAF 持續移動
+const keysHeld = { a: false, d: false };
+let keyRAF = null;
 
 function rand() { return Math.floor(Math.random() * Math.min(3, ITEMS.length)); }
 
@@ -570,38 +610,10 @@ function showCombo(n) {
   comboTimer = setTimeout(() => el.remove(), 1600);
 }
 
-/* ── Shoot animation: launch ball upward with an arc projectile visual ── */
-function spawnShootEffect(x, lv) {
-  const item = ITEMS[lv];
-  const sz = item.radius * 2;
-  const el = document.createElement('div');
-  el.style.cssText = `
-    position:absolute;
-    left:${(x/W*100)}%;
-    bottom:${(28/H*100 + (item.radius/H*100))}%;
-    width:${sz}px; height:${sz}px;
-    transform:translateX(-50%);
-    border-radius:50%; overflow:hidden;
-    pointer-events:none; z-index:5;
-    box-shadow:0 0 16px rgba(232,82,122,0.6),0 0 32px rgba(232,82,122,0.3);
-    transition: bottom 0.28s cubic-bezier(0.4,0,0.6,1), opacity 0.06s 0.22s;
-  `;
-  const img = document.createElement('img');
-  img.src = resolvedImages[lv];
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-  el.appendChild(img);
-  boardShell.appendChild(el);
-  requestAnimationFrame(() => {
-    el.style.bottom = '100%';
-    el.style.opacity = '0';
-  });
-  setTimeout(() => el.remove(), 400);
-}
-
 function makeBall(x, y, lv) {
   const item = ITEMS[lv];
   const body = Bodies.circle(x, y, item.radius, {
-    restitution: 0.18, friction: 0.05, frictionAir: 0.012, density: 0.0015,
+    restitution: 0.22, friction: 0.06, frictionAir: 0.010, density: 0.0015,
     render: { sprite: {
       texture: resolvedImages[lv],
       xScale: (item.radius * 2) / 200,
@@ -677,7 +689,7 @@ function drawDecos() {
   ctx.lineTo(W - CUP_R, H - CUP_BOT); ctx.lineTo(W - CUP_R, CUP_TOP_VIS);
   ctx.stroke();
 
-  /* ── Overflow dashed line ── */
+  /* ── Overflow dashed line (對齊警戒線) ── */
   ctx.strokeStyle = 'rgba(240,100,50,0.70)'; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
   ctx.beginPath(); ctx.moveTo(CUP_L + 16, GAME_OVER_Y); ctx.lineTo(W - CUP_R - 16, GAME_OVER_Y); ctx.stroke();
   ctx.setLineDash([]);
@@ -714,10 +726,17 @@ function createWorld() {
   engine = Engine.create(); engine.gravity.y = 1.1;
   render = Render.create({ canvas, engine, options:{ width:W, height:H, wireframes:false, background:'transparent' } });
 
-  // Floor hidden below launcher platform
-  const floor = Bodies.rectangle(W/2, H - CUP_BOT/2 + WALL_T/2, W - 56, WALL_T, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
-  const lw    = Bodies.rectangle(CUP_L/2, H/2, WALL_T, H, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
-  const rw    = Bodies.rectangle(W-CUP_R/2, H/2, WALL_T, H, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
+  // ── 修正: 牆壁與地板放置正確，讓球可以落回容器 ──
+  // 地板：放在杯底 (H - CUP_BOT) 位置
+  const floorY  = H - CUP_BOT / 2;
+  const floor   = Bodies.rectangle(W/2, floorY, W - CUP_L - CUP_R, WALL_T,
+                    { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
+  // 左壁：從頂部到底部
+  const lw      = Bodies.rectangle(CUP_L / 2, H / 2, WALL_T, H,
+                    { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
+  // 右壁
+  const rw      = Bodies.rectangle(W - CUP_R / 2, H / 2, WALL_T, H,
+                    { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
   Composite.add(engine.world, [floor, lw, rw]);
   Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
   Events.on(engine, 'collisionStart', onCollision);
@@ -729,20 +748,20 @@ function shootBall() {
   if (!canDrop || isGameOver) return;
   const lv = nextLevel;
   const cx = clampX(currentX, lv);
+  const r  = ITEMS[lv].radius;
 
-  // Visual shoot effect
-  spawnShootEffect(cx, lv);
-
-  // Create body at launch position
-  const ball = makeBall(cx, LAUNCH_Y - ITEMS[lv].radius - 2, lv);
+  // ── 修正: 球在發射台位置生成，向上射出後重力把它拉回杯中 ──
+  // 生成 y = PLATFORM_Y - r，確保球在台面上方出現
+  const spawnY = PLATFORM_Y - r - 2;
+  const ball = makeBall(cx, spawnY, lv);
   Composite.add(engine.world, ball);
-  // Give it upward velocity
+  // 給予向上初速，Matter 的重力會讓它自然拋物後落下
   Body.setVelocity(ball, { x: 0, y: -LAUNCH_SPEED });
 
   canDrop = false; comboCount = 0;
   nextLevel = rand(); setNext(nextLevel);
   currentX = clampX(currentX, nextLevel); updateLauncher();
-  setTimeout(() => { canDrop = true; }, 320);
+  setTimeout(() => { canDrop = true; }, 380);
 }
 
 function onCollision(ev) {
@@ -789,7 +808,19 @@ function getCanvasX(clientX) {
   return clampX(((clientX - r.left) / r.width) * W, nextLevel);
 }
 
+/* ── 鍵盤持續移動 (rAF 版) ── */
+function keyMoveLoop() {
+  if (!keysHeld.a && !keysHeld.d) { keyRAF = null; return; }
+  if (!isGameOver) {
+    if (keysHeld.a) currentX = clampX(currentX - KEY_STEP, nextLevel);
+    if (keysHeld.d) currentX = clampX(currentX + KEY_STEP, nextLevel);
+    updateLauncher();
+  }
+  keyRAF = requestAnimationFrame(keyMoveLoop);
+}
+
 function bindInput() {
+  /* 滑鼠 */
   canvas.addEventListener('mousemove', e => {
     if (isGameOver) return;
     currentX = getCanvasX(e.clientX);
@@ -797,6 +828,7 @@ function bindInput() {
   });
   canvas.addEventListener('click', () => shootBall());
 
+  /* 觸控 */
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (isGameOver) return;
@@ -821,6 +853,30 @@ function bindInput() {
     shootBall();
   }, { passive: false });
 
+  /* ── 鍵盤控制 (新增) ── */
+  window.addEventListener('keydown', e => {
+    if (isGameOver) return;
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'arrowleft') {
+      e.preventDefault();
+      keysHeld.a = true;
+      if (!keyRAF) keyRAF = requestAnimationFrame(keyMoveLoop);
+    } else if (key === 'd' || key === 'arrowright') {
+      e.preventDefault();
+      keysHeld.d = true;
+      if (!keyRAF) keyRAF = requestAnimationFrame(keyMoveLoop);
+    } else if (key === ' ') {
+      e.preventDefault();
+      shootBall();
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'arrowleft') keysHeld.a = false;
+    if (key === 'd' || key === 'arrowright') keysHeld.d = false;
+  });
+
   window.addEventListener('resize', updateLauncher);
 }
 
@@ -841,6 +897,7 @@ function startGame() {
   destroyWorld(); overlay.classList.remove('show');
   score=0; merges=0; maxLevel=0;
   isGameOver=false; canDrop=true; overflowStart=null; comboCount=0;
+  keysHeld.a=false; keysHeld.d=false;
   nextLevel=rand(); currentX=clampX(W/2,nextLevel);
   setNext(nextLevel); updateStats(); createWorld(); updateLauncher();
 }
