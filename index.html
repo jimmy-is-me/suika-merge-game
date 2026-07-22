@@ -242,10 +242,10 @@
       color: var(--text);
     }
 
-    /* ── Launcher at bottom ── */
+    /* ── Launcher at top (drop zone) ── */
     .launcher-token {
       position: absolute;
-      bottom: 28px;
+      top: 10px;
       border-radius: 50%;
       pointer-events: none;
       transform: translateX(-50%);
@@ -266,13 +266,13 @@
       50%       { box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 0 0 8px rgba(232,82,122,0.20), 0 8px 32px rgba(232,82,122,0.50), 0 0 28px rgba(232,82,122,0.35); }
     }
 
-    /* shoot guide line going upward */
+    /* drop guide line going downward */
     .shoot-guide {
       position: absolute;
-      bottom: 74px;
-      top: 0;
+      top: 74px;
+      bottom: 0;
       width: 2px;
-      background: linear-gradient(0deg, rgba(232,82,122,0.50) 0%, rgba(232,82,122,0.08) 60%, transparent 100%);
+      background: linear-gradient(180deg, rgba(232,82,122,0.50) 0%, rgba(232,82,122,0.08) 60%, transparent 100%);
       transform: translateX(-50%);
       pointer-events: none;
       z-index: 2;
@@ -283,7 +283,7 @@
       position: absolute;
       inset: 0;
       background: repeating-linear-gradient(
-        0deg,
+        180deg,
         transparent 0px,
         transparent 6px,
         rgba(255,255,255,0.55) 6px,
@@ -388,7 +388,7 @@
       <div class="logo-bubble">🍹</div>
       <div class="logo-info">
         <div class="logo-name">Wuwu Drink Game</div>
-        <div class="logo-sub">射擊 · 合併 · 升級！</div>
+        <div class="logo-sub">瞄準 · 合併 · 升級！</div>
       </div>
     </div>
 
@@ -420,7 +420,7 @@
       <div>
         <div class="next-label">Next</div>
         <div class="next-name" id="nextName">—</div>
-        <div class="next-hint">⬆ 下一個射出</div>
+        <div class="next-hint">⬇ 下一個掉落</div>
       </div>
     </div>
 
@@ -428,7 +428,7 @@
 
     <div class="kbd-hint">
       ⌨️ <kbd>A</kbd> 左移 &nbsp;<kbd>D</kbd> 右移<br>
-      <kbd>Space</kbd> 射出飲料
+      <kbd>Space</kbd> 放下飲料
     </div>
 
     <div class="divider"></div>
@@ -437,7 +437,7 @@
     <div class="item-list" id="itemList"></div>
 
     <div class="tip">
-      <span>💡 小技巧：</span>瞄準同等級飲料射擊，連鎖合併得更高分！
+      <span>💡 小技巧：</span>對準同等級飲料放下，連鎖合併得更高分！
     </div>
   </aside>
 
@@ -445,9 +445,9 @@
   <section class="panel board-wrap">
     <div class="board-shell" id="boardShell">
 
-      <!-- launcher at bottom -->
+      <!-- launcher at top -->
       <div class="launcher-token" id="launcherToken"><img id="launcherImg" alt=""></div>
-      <!-- shoot guide going upward -->
+      <!-- drop guide going downward -->
       <div class="shoot-guide" id="shootGuide"></div>
 
       <div class="overlay" id="gameOverOverlay">
@@ -527,19 +527,23 @@ const itemListEl = document.getElementById('itemList');
 
 const W = canvas.width, H = canvas.height;
 const WALL_T   = 40;
-const CUP_L    = 44, CUP_R = 44, CUP_BOT = 24, CUP_TOP_VIS = 64;
 
-// ── 修正 1: 警戒線與視覺杯口一致 ──
-// GAME_OVER_Y 設在杯口往下一點，讓溢出判斷正確
-const GAME_OVER_Y    = CUP_TOP_VIS + 10;   // = 74px (杯口下方10px)
+// ── 杯子尺寸定義 ──
+// CUP_L / CUP_R: 左右牆壁的「視覺」外緣到 canvas 邊緣的距離
+// 實際內壁 x 座標:  左牆內壁 = CUP_L,  右牆內壁 = W - CUP_R
+const CUP_L    = 44, CUP_R = 44, CUP_BOT = 24;
+
+// 杯口視覺上緣（飲料落入的最高線）
+const CUP_TOP_VIS = 80;
+
+// ── 修正 3: 警戒線與杯口對齊 ──
+// 警戒線 = 杯口視覺上緣，當球超過這條線就視為溢出
+const GAME_OVER_Y    = CUP_TOP_VIS;
 const OVERFLOW_DELAY = 1400;
 
-// ── 修正 2: 發射位置與速度 ──
-// 發射台在視覺底部平台中央 (y = H - 40)
-// 球生成在台面上方，並給予適當向上速度讓它能落進杯中
-const PLATFORM_Y    = H - 40;              // 發射台中心 y
-// 初始向上速度 (Matter 單位/tick)；適度讓球自然拋物落下
-const LAUNCH_SPEED  = 22;
+// ── 修正 1: 球從頂部往下掉，不再向上射 ──
+// 生成位置: y = DROP_SPAWN_Y（杯口上方一點，讓球自然落下）
+const DROP_SPAWN_Y = 30;  // canvas 頂端往下30px，在杯口上方
 
 // 鍵盤移動速度 (canvas px / 按鍵事件)
 const KEY_STEP = 12;
@@ -572,9 +576,12 @@ function setNext(lv) {
   launcherToken.style.height = sz + 'px';
 }
 
+// ── 修正 2: clampX 確保球不會超出左右牆壁內緣 ──
 function clampX(x, lv) {
   const r = ITEMS[lv].radius;
-  return Math.max(CUP_L + r + 3, Math.min(W - CUP_R - r - 3, x));
+  // 左牆內壁 = CUP_L，右牆內壁 = W - CUP_R
+  // 球心必須在 [CUP_L + r, W - CUP_R - r] 範圍內
+  return Math.max(CUP_L + r + 2, Math.min(W - CUP_R - r - 2, x));
 }
 
 function updateLauncher() {
@@ -689,35 +696,12 @@ function drawDecos() {
   ctx.lineTo(W - CUP_R, H - CUP_BOT); ctx.lineTo(W - CUP_R, CUP_TOP_VIS);
   ctx.stroke();
 
-  /* ── Overflow dashed line (對齊警戒線) ── */
+  /* ── Overflow dashed line 對齊杯口 (GAME_OVER_Y = CUP_TOP_VIS) ── */
   ctx.strokeStyle = 'rgba(240,100,50,0.70)'; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
-  ctx.beginPath(); ctx.moveTo(CUP_L + 16, GAME_OVER_Y); ctx.lineTo(W - CUP_R - 16, GAME_OVER_Y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CUP_L + 4, GAME_OVER_Y); ctx.lineTo(W - CUP_R - 4, GAME_OVER_Y); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(240,100,50,0.85)'; ctx.font = 'bold 10.5px Nunito,Arial,sans-serif';
-  ctx.fillText('▲ 爆杯警戒線', W - 148, GAME_OVER_Y - 7);
-
-  /* ── Launcher platform at bottom ── */
-  const platGrad = ctx.createLinearGradient(0, H - 60, 0, H - 20);
-  platGrad.addColorStop(0, 'rgba(232,82,122,0.22)');
-  platGrad.addColorStop(1, 'rgba(232,82,122,0.05)');
-  ctx.fillStyle = platGrad;
-  ctx.beginPath();
-  ctx.roundRect
-    ? ctx.roundRect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36, 10)
-    : ctx.rect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(232,82,122,0.35)'; ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect
-    ? ctx.roundRect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36, 10)
-    : ctx.rect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36);
-  ctx.stroke();
-
-  /* ── Launcher label ── */
-  ctx.fillStyle = 'rgba(232,82,122,0.75)'; ctx.font = 'bold 9.5px Nunito,Arial,sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('🚀 LAUNCHER', W / 2, H - 8);
-  ctx.textAlign = 'left';
+  ctx.fillText('▲ 爆杯警戒線', W - 148, GAME_OVER_Y - 5);
 
   ctx.restore();
 }
@@ -726,17 +710,20 @@ function createWorld() {
   engine = Engine.create(); engine.gravity.y = 1.1;
   render = Render.create({ canvas, engine, options:{ width:W, height:H, wireframes:false, background:'transparent' } });
 
-  // ── 修正: 牆壁與地板放置正確，讓球可以落回容器 ──
-  // 地板：放在杯底 (H - CUP_BOT) 位置
+  // ── 修正 2: 牆壁物理體對齊視覺杯壁 ──
+  // 杯底: y 在 H - CUP_BOT/2，寬度 = 杯子內部寬度
   const floorY  = H - CUP_BOT / 2;
   const floor   = Bodies.rectangle(W/2, floorY, W - CUP_L - CUP_R, WALL_T,
                     { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
-  // 左壁：從頂部到底部
-  const lw      = Bodies.rectangle(CUP_L / 2, H / 2, WALL_T, H,
+
+  // ── 修正 2: 左牆中心 x = CUP_L - WALL_T/2，使牆壁右緣貼齊 CUP_L ──
+  const lw      = Bodies.rectangle(CUP_L - WALL_T / 2, H / 2, WALL_T, H,
                     { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
-  // 右壁
-  const rw      = Bodies.rectangle(W - CUP_R / 2, H / 2, WALL_T, H,
+
+  // ── 修正 2: 右牆中心 x = W - CUP_R + WALL_T/2，使牆壁左緣貼齊 W - CUP_R ──
+  const rw      = Bodies.rectangle(W - CUP_R + WALL_T / 2, H / 2, WALL_T, H,
                     { isStatic:true, render:{fillStyle:'rgba(0,0,0,0)'} });
+
   Composite.add(engine.world, [floor, lw, rw]);
   Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
   Events.on(engine, 'collisionStart', onCollision);
@@ -744,19 +731,17 @@ function createWorld() {
   Events.on(render,  'afterRender',   drawDecos);
 }
 
-function shootBall() {
+function dropBall() {
   if (!canDrop || isGameOver) return;
   const lv = nextLevel;
   const cx = clampX(currentX, lv);
   const r  = ITEMS[lv].radius;
 
-  // ── 修正: 球在發射台位置生成，向上射出後重力把它拉回杯中 ──
-  // 生成 y = PLATFORM_Y - r，確保球在台面上方出現
-  const spawnY = PLATFORM_Y - r - 2;
+  // ── 修正 1: 球從頂部 DROP_SPAWN_Y 往下掉，不給初速，靠重力自然落下 ──
+  const spawnY = DROP_SPAWN_Y;
   const ball = makeBall(cx, spawnY, lv);
   Composite.add(engine.world, ball);
-  // 給予向上初速，Matter 的重力會讓它自然拋物後落下
-  Body.setVelocity(ball, { x: 0, y: -LAUNCH_SPEED });
+  // 不給任何初速，Matter 重力 (y=1.1) 讓球自然加速落下
 
   canDrop = false; comboCount = 0;
   nextLevel = rand(); setNext(nextLevel);
@@ -826,7 +811,7 @@ function bindInput() {
     currentX = getCanvasX(e.clientX);
     updateLauncher();
   });
-  canvas.addEventListener('click', () => shootBall());
+  canvas.addEventListener('click', () => dropBall());
 
   /* 觸控 */
   canvas.addEventListener('touchstart', e => {
@@ -850,10 +835,10 @@ function bindInput() {
       currentX = getCanvasX(e.changedTouches[0].clientX);
       updateLauncher();
     }
-    shootBall();
+    dropBall();
   }, { passive: false });
 
-  /* ── 鍵盤控制 (新增) ── */
+  /* ── 鍵盤控制 ── */
   window.addEventListener('keydown', e => {
     if (isGameOver) return;
     const key = e.key.toLowerCase();
@@ -867,7 +852,7 @@ function bindInput() {
       if (!keyRAF) keyRAF = requestAnimationFrame(keyMoveLoop);
     } else if (key === ' ') {
       e.preventDefault();
-      shootBall();
+      dropBall();
     }
   });
 
