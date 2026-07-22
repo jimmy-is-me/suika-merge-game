@@ -26,7 +26,6 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── Desktop: fixed viewport, no scroll ── */
     html, body {
       height: 100%;
       overflow: hidden;
@@ -40,7 +39,6 @@
       justify-content: center;
     }
 
-    /* ── Outer wrapper: max width so it doesn't spread full-wide ── */
     .app-outer {
       width: 100%;
       height: 100vh;
@@ -49,13 +47,12 @@
       justify-content: center;
     }
 
-    /* ── App: side-by-side, capped width ── */
     .app {
       display: flex;
       width: 100%;
-      max-width: 980px;       /* ← 電腦版最大寬度 */
+      max-width: 980px;
       height: calc(100vh - 24px);
-      max-height: 760px;      /* ← 防止超高螢幕變太長 */
+      max-height: 760px;
       gap: 12px;
       padding: 0 16px;
     }
@@ -69,7 +66,6 @@
       border-radius: var(--radius);
     }
 
-    /* ── Sidebar ── */
     .sidebar {
       flex: 0 0 230px;
       height: 100%;
@@ -80,7 +76,6 @@
     .sidebar::-webkit-scrollbar { width: 4px; }
     .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    /* ── Board ── */
     .board-wrap {
       flex: 1 1 0;
       height: 100%;
@@ -107,7 +102,10 @@
       background: var(--cup-bg);
       cursor: crosshair;
       touch-action: none;
-      box-shadow: 0 8px 32px rgba(180,60,110,0.10) inset;
+      box-shadow:
+        0 8px 32px rgba(180,60,110,0.10) inset,
+        0 2px 0 rgba(255,255,255,0.9) inset,
+        0 24px 64px rgba(180,60,110,0.18);
     }
 
     /* Logo */
@@ -133,7 +131,6 @@
       flex-shrink: 0;
     }
 
-    /* Stats */
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat {
       padding: 10px 12px; border-radius: 16px;
@@ -160,7 +157,6 @@
     .stat-value.blue  { color: #5078ff; }
     .stat-value.gold  { color: var(--gold); }
 
-    /* Next drink */
     .next-card {
       display: flex; align-items: center; gap: 12px;
       padding: 11px 14px; border-radius: 16px;
@@ -179,7 +175,6 @@
     .next-name  { font-size: 13px; font-weight: 900; }
     .next-hint  { font-size: 10.5px; color: var(--muted); font-weight: 600; }
 
-    /* Button */
     .btn {
       width: 100%; border: 0; cursor: pointer; border-radius: 14px;
       padding: 11px 16px; font-size: 13.5px; font-weight: 900;
@@ -194,7 +189,6 @@
     .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(232,82,122,0.38); }
     .btn:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(232,82,122,0.28); }
 
-    /* Item list */
     .section-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); flex-shrink: 0; }
     .item-list { display: flex; flex-direction: column; gap: 2px; }
     .item-row {
@@ -226,23 +220,54 @@
     }
     .tip span { color: var(--text); font-weight: 800; }
 
-    /* Preview token & guide */
-    .preview-token {
-      position: absolute; top: 28px;
-      border-radius: 50%; pointer-events: none;
+    /* ── Launcher at bottom ── */
+    .launcher-token {
+      position: absolute;
+      bottom: 28px;
+      border-radius: 50%;
+      pointer-events: none;
       transform: translateX(-50%);
-      overflow: hidden; background: #fff;
-      opacity: 0.90; z-index: 3;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 6px 20px rgba(232,82,122,0.28);
+      overflow: hidden;
+      background: #fff;
+      z-index: 3;
+      box-shadow:
+        0 0 0 3px rgba(255,255,255,0.9),
+        0 0 0 5px rgba(232,82,122,0.35),
+        0 8px 24px rgba(232,82,122,0.40),
+        0 0 18px rgba(232,82,122,0.25);
       transition: left .06s ease, width .18s ease, height .18s ease;
+      animation: launcherPulse 2s ease-in-out infinite;
     }
-    .preview-token img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .drop-guide {
-      position: absolute; top: 74px; bottom: 0; width: 1.5px;
-      background: linear-gradient(180deg, rgba(232,82,122,0.35) 0%, rgba(232,82,122,0) 100%);
+    .launcher-token img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    @keyframes launcherPulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px rgba(232,82,122,0.35), 0 8px 24px rgba(232,82,122,0.40), 0 0 18px rgba(232,82,122,0.25); }
+      50%       { box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 0 0 8px rgba(232,82,122,0.20), 0 8px 32px rgba(232,82,122,0.50), 0 0 28px rgba(232,82,122,0.35); }
+    }
+
+    /* shoot guide line going upward */
+    .shoot-guide {
+      position: absolute;
+      bottom: 74px;
+      top: 0;
+      width: 2px;
+      background: linear-gradient(0deg, rgba(232,82,122,0.50) 0%, rgba(232,82,122,0.08) 60%, transparent 100%);
       transform: translateX(-50%);
-      pointer-events: none; z-index: 2;
+      pointer-events: none;
+      z-index: 2;
       transition: left .06s ease;
+    }
+    /* dashed overlay on the guide */
+    .shoot-guide::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 6px,
+        rgba(255,255,255,0.55) 6px,
+        rgba(255,255,255,0.55) 10px
+      );
     }
 
     /* Score pop */
@@ -312,59 +337,24 @@
     .ov-btn:hover { transform: translateY(-2px); }
     .ov-btn:active { transform: translateY(0); }
 
-    /* ══════════════════════════════
-       Mobile  ≤ 640px
-       - 垂直排列：遊戲板在上，側欄在下
-       - 整頁可以捲動，側欄資料完整顯示
-       ══════════════════════════════ */
+    /* Mobile */
     @media (max-width: 640px) {
-      html, body {
-        height: auto;
-        overflow: auto;          /* 允許頁面捲動 */
-        min-height: 100%;
-      }
+      html, body { height: auto; overflow: auto; min-height: 100%; }
       body { align-items: flex-start; }
-
-      .app-outer {
-        height: auto;
-        align-items: flex-start;
-      }
-
+      .app-outer { height: auto; align-items: flex-start; }
       .app {
         flex-direction: column;
-        max-width: 100%;
-        height: auto;
-        max-height: none;
-        gap: 10px;
-        padding: 10px;
+        max-width: 100%; height: auto; max-height: none;
+        gap: 10px; padding: 10px;
       }
-
-      .sidebar {
-        flex: none;
-        width: 100%;
-        height: auto;
-        overflow-y: visible;    /* 讓側欄內容完整展開 */
-      }
-
+      .sidebar { flex: none; width: 100%; height: auto; overflow-y: visible; }
       .board-wrap {
-        flex: none;
-        width: 100%;
-        /* 依 canvas 比例 462:682 ≈ 67.7% 設定高度 */
+        flex: none; width: 100%;
         height: calc((100vw - 20px) * 682 / 462);
-        max-height: 82vh;
-        padding: 8px;
+        max-height: 82vh; padding: 8px;
       }
-
-      .board-shell {
-        width: 100%;
-        height: 100%;
-      }
-
-      canvas {
-        width: 100%;
-        height: 100%;
-        max-width: none;
-      }
+      .board-shell { width: 100%; height: 100%; }
+      canvas { width: 100%; height: 100%; max-width: none; }
     }
   </style>
 </head>
@@ -377,7 +367,7 @@
       <div class="logo-bubble">🍹</div>
       <div class="logo-info">
         <div class="logo-name">Wuwu Drink Game</div>
-        <div class="logo-sub">投放 · 合併 · 升級！</div>
+        <div class="logo-sub">射擊 · 合併 · 升級！</div>
       </div>
     </div>
 
@@ -409,7 +399,7 @@
       <div>
         <div class="next-label">Next</div>
         <div class="next-name" id="nextName">—</div>
-        <div class="next-hint">⬇ 下一個投放</div>
+        <div class="next-hint">⬆ 下一個射出</div>
       </div>
     </div>
 
@@ -421,15 +411,18 @@
     <div class="item-list" id="itemList"></div>
 
     <div class="tip">
-      <span>💡 小技巧：</span>大杯放底部，小的往角落堆。連鎖合併一次升好幾級！
+      <span>💡 小技巧：</span>瞄準同等級飲料射擊，連鎖合併得更高分！
     </div>
   </aside>
 
   <!-- Board -->
   <section class="panel board-wrap">
     <div class="board-shell" id="boardShell">
-      <div class="preview-token" id="previewToken"><img id="previewImg" alt=""></div>
-      <div class="drop-guide" id="dropGuide"></div>
+
+      <!-- launcher at bottom (replaces top preview) -->
+      <div class="launcher-token" id="launcherToken"><img id="launcherImg" alt=""></div>
+      <!-- shoot guide going upward -->
+      <div class="shoot-guide" id="shootGuide"></div>
 
       <div class="overlay" id="gameOverOverlay">
         <div class="overlay-card">
@@ -488,7 +481,7 @@ function preloadImages(cb) {
 }
 
 /* ── Matter.js ── */
-const { Engine, Render, Runner, Bodies, Composite, Events, Vector } = Matter;
+const { Engine, Render, Runner, Bodies, Composite, Events, Vector, Body } = Matter;
 
 const canvas     = document.getElementById('game');
 const boardShell = document.getElementById('boardShell');
@@ -498,18 +491,22 @@ const mergesEl   = document.getElementById('merges');
 const maxlvEl    = document.getElementById('maxlevel');
 const nextImg    = document.getElementById('nextImg');
 const nextName   = document.getElementById('nextName');
-const prevToken  = document.getElementById('previewToken');
-const prevImg    = document.getElementById('previewImg');
-const dropGuide  = document.getElementById('dropGuide');
+const launcherToken = document.getElementById('launcherToken');
+const launcherImg   = document.getElementById('launcherImg');
+const shootGuide    = document.getElementById('shootGuide');
 const overlay    = document.getElementById('gameOverOverlay');
 const finalScEl  = document.getElementById('finalScore');
 const finalBsEl  = document.getElementById('finalBest');
 const itemListEl = document.getElementById('itemList');
 
 const W = canvas.width, H = canvas.height;
-const WALL_T = 40, DROP_Y = 106, GAME_OVER_Y = 134;
-const CUP_L = 44, CUP_R = 44, CUP_BOT = 24, CUP_TOP_VIS = 128;
+const WALL_T = 40;
+const LAUNCH_Y = H - 40;      // where balls are launched FROM (bottom)
+const GAME_OVER_Y = 80;       // overflow line near top
+const CUP_L = 44, CUP_R = 44, CUP_BOT = 24, CUP_TOP_VIS = 64;
 const OVERFLOW_DELAY = 1400;
+// Upward launch speed (pixels/second in Matter units)
+const LAUNCH_SPEED = 18;
 
 let engine, render, runner;
 let score=0, best=0, merges=0, maxLevel=0;
@@ -529,9 +526,10 @@ function updateStats() {
 function setNext(lv) {
   const src = resolvedImages[lv];
   nextImg.src = src; nextName.textContent = ITEMS[lv].name;
-  prevImg.src = src;
+  launcherImg.src = src;
   const sz = Math.max(44, Math.min(84, ITEMS[lv].radius * 2));
-  prevToken.style.width = sz + 'px'; prevToken.style.height = sz + 'px';
+  launcherToken.style.width  = sz + 'px';
+  launcherToken.style.height = sz + 'px';
 }
 
 function clampX(x, lv) {
@@ -539,13 +537,13 @@ function clampX(x, lv) {
   return Math.max(CUP_L + r + 3, Math.min(W - CUP_R - r - 3, x));
 }
 
-function updatePreview() {
+function updateLauncher() {
   const canvasRect = canvas.getBoundingClientRect();
   const shellRect  = boardShell.getBoundingClientRect();
   const canvasOffsetLeft = canvasRect.left - shellRect.left;
   const vx = canvasOffsetLeft + (currentX / W) * canvasRect.width;
-  prevToken.style.left = vx + 'px';
-  dropGuide.style.left = vx + 'px';
+  launcherToken.style.left = vx + 'px';
+  shootGuide.style.left    = vx + 'px';
 }
 
 function scorePop(x, y, pts, combo) {
@@ -572,10 +570,38 @@ function showCombo(n) {
   comboTimer = setTimeout(() => el.remove(), 1600);
 }
 
+/* ── Shoot animation: launch ball upward with an arc projectile visual ── */
+function spawnShootEffect(x, lv) {
+  const item = ITEMS[lv];
+  const sz = item.radius * 2;
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:absolute;
+    left:${(x/W*100)}%;
+    bottom:${(28/H*100 + (item.radius/H*100))}%;
+    width:${sz}px; height:${sz}px;
+    transform:translateX(-50%);
+    border-radius:50%; overflow:hidden;
+    pointer-events:none; z-index:5;
+    box-shadow:0 0 16px rgba(232,82,122,0.6),0 0 32px rgba(232,82,122,0.3);
+    transition: bottom 0.28s cubic-bezier(0.4,0,0.6,1), opacity 0.06s 0.22s;
+  `;
+  const img = document.createElement('img');
+  img.src = resolvedImages[lv];
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  el.appendChild(img);
+  boardShell.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.bottom = '100%';
+    el.style.opacity = '0';
+  });
+  setTimeout(() => el.remove(), 400);
+}
+
 function makeBall(x, y, lv) {
   const item = ITEMS[lv];
   const body = Bodies.circle(x, y, item.radius, {
-    restitution: 0.08, friction: 0.03, frictionAir: 0.010, density: 0.0015,
+    restitution: 0.18, friction: 0.05, frictionAir: 0.012, density: 0.0015,
     render: { sprite: {
       texture: resolvedImages[lv],
       xScale: (item.radius * 2) / 200,
@@ -602,31 +628,96 @@ function buildList() {
 function drawDecos() {
   const ctx = render.context;
   ctx.save();
-  ctx.fillStyle = 'rgba(255,238,248,0.22)';
+
+  /* ── 3-D cup body: gradient fill ── */
+  const grad = ctx.createLinearGradient(CUP_L, 0, W - CUP_R, 0);
+  grad.addColorStop(0,    'rgba(255,220,240,0.18)');
+  grad.addColorStop(0.5,  'rgba(255,245,252,0.08)');
+  grad.addColorStop(1,    'rgba(255,220,240,0.18)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(CUP_L, CUP_TOP_VIS);
+  ctx.lineTo(CUP_L, H - CUP_BOT);
+  ctx.lineTo(W - CUP_R, H - CUP_BOT);
+  ctx.lineTo(W - CUP_R, CUP_TOP_VIS);
+  ctx.closePath();
+  ctx.fill();
+
+  /* ── Left wall 3-D highlight ── */
+  const lGrad = ctx.createLinearGradient(CUP_L, 0, CUP_L + 14, 0);
+  lGrad.addColorStop(0,   'rgba(255,255,255,0.55)');
+  lGrad.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = lGrad;
+  ctx.fillRect(CUP_L, CUP_TOP_VIS, 14, H - CUP_TOP_VIS - CUP_BOT);
+
+  /* ── Right wall 3-D shadow ── */
+  const rGrad = ctx.createLinearGradient(W - CUP_R - 14, 0, W - CUP_R, 0);
+  rGrad.addColorStop(0,   'rgba(180,60,110,0)');
+  rGrad.addColorStop(1,   'rgba(180,60,110,0.18)');
+  ctx.fillStyle = rGrad;
+  ctx.fillRect(W - CUP_R - 14, CUP_TOP_VIS, 14, H - CUP_TOP_VIS - CUP_BOT);
+
+  /* ── Bottom 3-D ellipse ── */
+  ctx.fillStyle = 'rgba(220,170,200,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(W / 2, H - CUP_BOT, (W - CUP_L - CUP_R) / 2, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* ── Cup rim top ellipse ── */
+  ctx.strokeStyle = 'rgba(232,82,122,0.22)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(W / 2, CUP_TOP_VIS, (W - CUP_L - CUP_R) / 2, 10, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  /* ── Cup walls outline ── */
+  ctx.strokeStyle = 'rgba(232,82,122,0.32)'; ctx.lineWidth = 3.5; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(CUP_L, CUP_TOP_VIS); ctx.lineTo(CUP_L, H - CUP_BOT);
+  ctx.lineTo(W - CUP_R, H - CUP_BOT); ctx.lineTo(W - CUP_R, CUP_TOP_VIS);
+  ctx.stroke();
+
+  /* ── Overflow dashed line ── */
+  ctx.strokeStyle = 'rgba(240,100,50,0.70)'; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+  ctx.beginPath(); ctx.moveTo(CUP_L + 16, GAME_OVER_Y); ctx.lineTo(W - CUP_R - 16, GAME_OVER_Y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(240,100,50,0.85)'; ctx.font = 'bold 10.5px Nunito,Arial,sans-serif';
+  ctx.fillText('▲ 爆杯警戒線', W - 148, GAME_OVER_Y - 7);
+
+  /* ── Launcher platform at bottom ── */
+  const platGrad = ctx.createLinearGradient(0, H - 60, 0, H - 20);
+  platGrad.addColorStop(0, 'rgba(232,82,122,0.22)');
+  platGrad.addColorStop(1, 'rgba(232,82,122,0.05)');
+  ctx.fillStyle = platGrad;
   ctx.beginPath();
   ctx.roundRect
-    ? ctx.roundRect(CUP_L, CUP_TOP_VIS, W-CUP_L-CUP_R, H-CUP_TOP_VIS-CUP_BOT+18, 14)
-    : ctx.rect(CUP_L, CUP_TOP_VIS, W-CUP_L-CUP_R, H-CUP_TOP_VIS-CUP_BOT+18);
+    ? ctx.roundRect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36, 10)
+    : ctx.rect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(232,82,122,0.28)'; ctx.lineWidth = 3.5; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(232,82,122,0.35)'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(CUP_L, CUP_TOP_VIS); ctx.lineTo(CUP_L, H-CUP_BOT);
-  ctx.lineTo(W-CUP_R, H-CUP_BOT); ctx.lineTo(W-CUP_R, CUP_TOP_VIS);
+  ctx.roundRect
+    ? ctx.roundRect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36, 10)
+    : ctx.rect(CUP_L + 4, H - 58, W - CUP_L - CUP_R - 8, 36);
   ctx.stroke();
-  ctx.strokeStyle='rgba(240,100,50,0.65)'; ctx.lineWidth=2; ctx.setLineDash([9,7]);
-  ctx.beginPath(); ctx.moveTo(CUP_L+16, GAME_OVER_Y); ctx.lineTo(W-CUP_R-16, GAME_OVER_Y); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle='rgba(240,100,50,0.80)'; ctx.font='bold 10.5px Nunito,Arial,sans-serif';
-  ctx.fillText('▲ 爆杯警戒線', W-148, GAME_OVER_Y-7);
+
+  /* ── Launcher label ── */
+  ctx.fillStyle = 'rgba(232,82,122,0.75)'; ctx.font = 'bold 9.5px Nunito,Arial,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🚀 LAUNCHER', W / 2, H - 8);
+  ctx.textAlign = 'left';
+
   ctx.restore();
 }
 
 function createWorld() {
   engine = Engine.create(); engine.gravity.y = 1.1;
   render = Render.create({ canvas, engine, options:{ width:W, height:H, wireframes:false, background:'transparent' } });
-  const floor = Bodies.rectangle(W/2, H+WALL_T/2-CUP_BOT, W-56, WALL_T, { isStatic:true, render:{fillStyle:'#e0c0d0'} });
-  const lw    = Bodies.rectangle(CUP_L/2, H/2+24, WALL_T, H-64, { isStatic:true, render:{fillStyle:'#edd0df'} });
-  const rw    = Bodies.rectangle(W-CUP_R/2, H/2+24, WALL_T, H-64, { isStatic:true, render:{fillStyle:'#edd0df'} });
+
+  // Floor hidden below launcher platform
+  const floor = Bodies.rectangle(W/2, H - CUP_BOT/2 + WALL_T/2, W - 56, WALL_T, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
+  const lw    = Bodies.rectangle(CUP_L/2, H/2, WALL_T, H, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
+  const rw    = Bodies.rectangle(W-CUP_R/2, H/2, WALL_T, H, { isStatic:true, render:{fillStyle:'rgba(220,180,200,0.0)'} });
   Composite.add(engine.world, [floor, lw, rw]);
   Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
   Events.on(engine, 'collisionStart', onCollision);
@@ -634,14 +725,24 @@ function createWorld() {
   Events.on(render,  'afterRender',   drawDecos);
 }
 
-function dropBall() {
+function shootBall() {
   if (!canDrop || isGameOver) return;
   const lv = nextLevel;
-  Composite.add(engine.world, makeBall(clampX(currentX, lv), DROP_Y, lv));
+  const cx = clampX(currentX, lv);
+
+  // Visual shoot effect
+  spawnShootEffect(cx, lv);
+
+  // Create body at launch position
+  const ball = makeBall(cx, LAUNCH_Y - ITEMS[lv].radius - 2, lv);
+  Composite.add(engine.world, ball);
+  // Give it upward velocity
+  Body.setVelocity(ball, { x: 0, y: -LAUNCH_SPEED });
+
   canDrop = false; comboCount = 0;
   nextLevel = rand(); setNext(nextLevel);
-  currentX = clampX(currentX, nextLevel); updatePreview();
-  setTimeout(() => { canDrop = true; }, 270);
+  currentX = clampX(currentX, nextLevel); updateLauncher();
+  setTimeout(() => { canDrop = true; }, 320);
 }
 
 function onCollision(ev) {
@@ -692,22 +793,22 @@ function bindInput() {
   canvas.addEventListener('mousemove', e => {
     if (isGameOver) return;
     currentX = getCanvasX(e.clientX);
-    updatePreview();
+    updateLauncher();
   });
-  canvas.addEventListener('click', () => dropBall());
+  canvas.addEventListener('click', () => shootBall());
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (isGameOver) return;
     currentX = getCanvasX(e.touches[0].clientX);
-    updatePreview();
+    updateLauncher();
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (isGameOver) return;
     currentX = getCanvasX(e.touches[0].clientX);
-    updatePreview();
+    updateLauncher();
   }, { passive: false });
 
   canvas.addEventListener('touchend', e => {
@@ -715,12 +816,12 @@ function bindInput() {
     if (isGameOver) return;
     if (e.changedTouches.length > 0) {
       currentX = getCanvasX(e.changedTouches[0].clientX);
-      updatePreview();
+      updateLauncher();
     }
-    dropBall();
+    shootBall();
   }, { passive: false });
 
-  window.addEventListener('resize', updatePreview);
+  window.addEventListener('resize', updateLauncher);
 }
 
 function destroyWorld() {
@@ -741,7 +842,7 @@ function startGame() {
   score=0; merges=0; maxLevel=0;
   isGameOver=false; canDrop=true; overflowStart=null; comboCount=0;
   nextLevel=rand(); currentX=clampX(W/2,nextLevel);
-  setNext(nextLevel); updateStats(); createWorld(); updatePreview();
+  setNext(nextLevel); updateStats(); createWorld(); updateLauncher();
 }
 
 document.getElementById('restartBtn').addEventListener('click', startGame);
