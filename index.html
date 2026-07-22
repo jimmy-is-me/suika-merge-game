@@ -3,516 +3,618 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Suika Merge Game</title>
+  <title>🍹 Merge Drink Game</title>
   <script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
   <style>
     :root {
-      --bg: #f6f3ee;
-      --surface: rgba(255,255,255,0.82);
-      --border: rgba(40,37,29,0.12);
-      --text: #28251d;
-      --muted: #6f6b62;
-      --accent: #01696f;
-      --accent-2: #e8f4f2;
-      --danger: #a93f44;
-      --cup-line: rgba(1,105,111,0.32);
-      --warn-line: rgba(217,119,6,0.6);
+      --bg: #fdf6f0;
+      --surface: rgba(255,255,255,0.90);
+      --border: rgba(40,37,29,0.10);
+      --text: #2e2616;
+      --muted: #7a7060;
+      --accent: #e06c8a;
+      --accent-dark: #b84e6d;
+      --green: #4caf7d;
+      --cup-bg: #fff8f0;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
     body {
       min-height: 100vh;
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
       color: var(--text);
-      background: radial-gradient(circle at top, #ffffff 0%, #f7f2eb 40%, var(--bg) 100%);
+      background: linear-gradient(135deg, #fff0f7 0%, #fdf6f0 50%, #f0f8ff 100%);
       display: grid;
       place-items: center;
       padding: 20px;
     }
     .app {
-      width: min(1100px, 100%);
+      width: min(1140px, 100%);
       display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 20px;
+      grid-template-columns: 290px 1fr;
+      gap: 18px;
       align-items: start;
     }
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      box-shadow: 0 14px 36px rgba(0,0,0,0.08);
-      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 16px 40px rgba(200,100,140,0.10);
+      backdrop-filter: blur(12px);
     }
-    .sidebar { padding: 22px; }
-    h1 { margin: 0 0 10px; font-size: 26px; line-height: 1.1; }
-    p { margin: 0 0 12px; color: var(--muted); line-height: 1.6; font-size: 14px; }
-    .stats { display: grid; gap: 12px; margin: 16px 0; }
-    .card {
-      padding: 14px 16px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.74);
-      border: 1px solid rgba(40,37,29,0.08);
+    .sidebar { padding: 20px; }
+
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .logo-icon { font-size: 30px; }
+    .logo-text { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, #e06c8a, #f7a200); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .tagline { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 12px; }
+    .stat {
+      padding: 11px 13px; border-radius: 16px;
+      background: linear-gradient(135deg, #fff5f8, #fff);
+      border: 1px solid rgba(224,108,138,0.13);
     }
-    .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-    .value { margin-top: 4px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .next-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .next-preview {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: #fff; border: 2px dashed rgba(40,37,29,0.14);
-      display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
+    .stat.full { grid-column: 1 / -1; }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+    .stat-value { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; }
+    .stat-value.pink { color: var(--accent); }
+    .stat-value.green { color: var(--green); }
+
+    .next-wrap {
+      display: flex; align-items: center; gap: 11px;
+      padding: 11px 13px; border-radius: 16px;
+      background: linear-gradient(135deg, #fff5f8, #fff);
+      border: 1px solid rgba(224,108,138,0.13);
+      margin-bottom: 12px;
     }
-    .next-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .controls { display: grid; gap: 10px; margin: 16px 0 0; }
-    button {
-      appearance: none; border: 0; cursor: pointer; border-radius: 12px;
-      padding: 12px 14px; font-size: 15px; font-weight: 700;
-      transition: transform .15s ease, background-color .15s ease;
-    }
-    button:hover { transform: translateY(-1px); }
-    .primary { background: var(--accent); color: #fff; }
-    .secondary { background: #fff; color: var(--text); border: 1px solid rgba(40,37,29,0.1); }
-    .legend {
-      margin-top: 14px; padding: 12px 14px; border-radius: 14px;
-      background: var(--accent-2); color: #0f4b50; font-size: 13px; line-height: 1.6;
-    }
-    .item-list { margin-top: 14px; }
-    .item-list-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
-    .item-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 7px 10px; border-radius: 10px; font-size: 13px;
-      transition: background .15s;
-    }
-    .item-row:hover { background: rgba(1,105,111,0.06); }
-    .item-thumb {
-      width: 36px; height: 36px; border-radius: 50%;
+    .next-thumb {
+      width: 60px; height: 60px; border-radius: 50%;
       overflow: hidden; flex: 0 0 auto;
-      border: 1.5px solid rgba(40,37,29,0.1);
-      background: #f0ede6;
+      border: 2px solid rgba(224,108,138,0.22);
+      background: #fff;
     }
-    .item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .item-info { flex: 1; }
-    .item-name { font-weight: 600; color: var(--text); }
-    .item-meta { font-size: 11px; color: var(--muted); }
-    .item-score { font-weight: 700; color: var(--accent); font-size: 13px; }
-    .board-wrap { position: relative; padding: 18px; }
-    .board-shell { position: relative; width: 520px; max-width: 100%; margin: 0 auto; }
+    .next-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .next-name { font-weight: 800; font-size: 14px; }
+    .next-hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+    .controls { display: grid; gap: 8px; margin-bottom: 13px; }
+    button {
+      appearance: none; border: 0; cursor: pointer; border-radius: 13px;
+      padding: 11px 14px; font-size: 14px; font-weight: 800;
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    .btn-primary {
+      background: linear-gradient(135deg, #e06c8a, #f7a200);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(224,108,138,0.30);
+    }
+
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 7px; }
+    .item-list { display: grid; gap: 4px; }
+    .item-row {
+      display: flex; align-items: center; gap: 9px;
+      padding: 6px 9px; border-radius: 12px;
+      transition: background .14s;
+    }
+    .item-row:hover { background: rgba(224,108,138,0.07); }
+    .item-thumb-sm {
+      width: 32px; height: 32px; border-radius: 50%;
+      overflow: hidden; flex: 0 0 auto;
+      border: 1.5px solid rgba(40,37,29,0.08);
+      background: #f9f0f4;
+    }
+    .item-thumb-sm img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-name { font-size: 12.5px; font-weight: 700; }
+    .item-file { font-size: 10.5px; color: var(--muted); font-family: monospace; }
+    .item-pts { font-size: 12px; font-weight: 800; color: var(--accent); margin-left: auto; white-space: nowrap; }
+
+    .tip {
+      margin-top: 11px; padding: 10px 12px; border-radius: 13px;
+      background: linear-gradient(135deg, #fff5f8, #fff8f0);
+      border: 1px solid rgba(224,108,138,0.10);
+      font-size: 12px; color: var(--muted); line-height: 1.6;
+    }
+    .tip strong { color: var(--text); }
+
+    .board-wrap { position: relative; padding: 16px; }
+    .board-shell { position: relative; width: 540px; max-width: 100%; margin: 0 auto; }
     canvas {
       display: block; width: 100%; height: auto;
       border-radius: 28px;
-      background: linear-gradient(180deg, #faf8f4 0%, #f0ede6 100%);
-      border: 1px solid rgba(40,37,29,0.08);
+      border: 1.5px solid rgba(224,108,138,0.16);
+      background: var(--cup-bg);
       cursor: crosshair;
       touch-action: none;
     }
     .preview-token {
-      position: absolute; top: 46px;
+      position: absolute; top: 38px;
       border-radius: 50%; pointer-events: none;
       transform: translateX(-50%);
-      border: 2.5px solid rgba(255,255,255,0.8);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+      border: 3px solid rgba(255,255,255,0.92);
+      box-shadow: 0 6px 18px rgba(200,100,140,0.22);
       overflow: hidden; background: #fff;
-      opacity: 0.9; z-index: 3;
-      transition: left .08s ease, width .2s ease, height .2s ease;
+      opacity: 0.92; z-index: 3;
+      transition: left .07s ease, width .2s ease, height .2s ease;
     }
     .preview-token img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .drop-guide {
-      position: absolute; top: 96px; bottom: 50px;
-      width: 1.5px;
-      background: linear-gradient(180deg, rgba(1,105,111,0.25), rgba(1,105,111,0));
+      position: absolute; top: 92px; bottom: 44px;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(224,108,138,0.28), rgba(224,108,138,0));
       transform: translateX(-50%);
       pointer-events: none; z-index: 2;
-      transition: left .08s ease;
+      transition: left .07s ease;
     }
+
+    .score-pop {
+      position: absolute; pointer-events: none; z-index: 10;
+      font-size: 20px; font-weight: 900; color: var(--accent);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      animation: popUp .9s ease forwards;
+      white-space: nowrap;
+    }
+    @keyframes popUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      60%  { opacity: 1; transform: translateY(-30px) scale(1.18); }
+      100% { opacity: 0; transform: translateY(-54px) scale(0.9); }
+    }
+
+    .combo-badge {
+      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, #e06c8a, #f7a200);
+      color: #fff; font-size: 13px; font-weight: 900;
+      padding: 5px 15px; border-radius: 99px;
+      box-shadow: 0 4px 14px rgba(224,108,138,0.38);
+      z-index: 9; pointer-events: none;
+      animation: comboPop .4s ease;
+      white-space: nowrap;
+    }
+    @keyframes comboPop {
+      0%   { transform: translateX(-50%) scale(0.7); opacity: 0; }
+      60%  { transform: translateX(-50%) scale(1.12); opacity: 1; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+
     .overlay {
-      position: absolute; inset: 18px;
-      display: none; align-items: center; justify-content: center; z-index: 6;
+      position: absolute; inset: 16px;
+      display: none; align-items: center; justify-content: center; z-index: 8;
     }
     .overlay.show { display: flex; }
     .overlay-card {
-      width: min(340px, calc(100% - 28px));
-      background: rgba(255,255,255,0.96); border: 1px solid rgba(40,37,29,0.12);
-      border-radius: 20px; padding: 22px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.13); text-align: center;
+      width: min(360px, calc(100% - 28px));
+      background: rgba(255,255,255,0.97);
+      border: 1.5px solid rgba(224,108,138,0.16);
+      border-radius: 24px; padding: 26px;
+      box-shadow: 0 24px 60px rgba(200,100,140,0.18);
+      text-align: center;
     }
-    .overlay-card h2 { margin: 0 0 8px; color: var(--danger); font-size: 24px; }
-    .overlay-card p { color: var(--muted); margin-bottom: 16px; }
-    .overflow-warn {
-      position: absolute; right: 26px;
-      font-size: 11.5px; color: rgba(217,119,6,0.85);
-      font-weight: 600; pointer-events: none; z-index: 4;
-      letter-spacing: .04em;
-    }
-    @media (max-width: 900px) {
+    .overlay-emoji { font-size: 52px; margin-bottom: 8px; }
+    .overlay-card h2 { margin: 0 0 6px; font-size: 26px; color: var(--accent); }
+    .overlay-card p { color: var(--muted); margin-bottom: 6px; font-size: 15px; }
+    .overlay-score { font-size: 42px; font-weight: 900; color: var(--text); margin-bottom: 4px; }
+    .overlay-best { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+    @media (max-width: 920px) {
       .app { grid-template-columns: 1fr; }
       .board-wrap { order: -1; }
-      .sidebar { padding: 18px; }
       .board-shell { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="panel sidebar">
-      <h1>🍹 Merge Game</h1>
-      <p>移動滑鼠／手指決定落點，點擊投放。兩個相同等級碰撞後合併升級。別讓球堆到橘色虛線！</p>
+<div class="app">
+  <aside class="panel sidebar">
+    <div class="logo">
+      <div class="logo-icon">🍹</div>
+      <div class="logo-text">Merge Drink</div>
+    </div>
+    <p class="tagline">投放・合併・升級！別讓杯子溢出～<br>兩個相同飲料碰撞後會合成更高階！</p>
 
-      <div class="stats">
-        <div class="card">
-          <div class="label">Score</div>
-          <div class="value" id="score">0</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div class="stat-value pink" id="score">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Best</div>
+        <div class="stat-value green" id="best">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Merges</div>
+        <div class="stat-value" id="merges">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Max Level</div>
+        <div class="stat-value" id="maxlevel">1</div>
+      </div>
+    </div>
+
+    <div class="next-wrap">
+      <div class="next-thumb"><img id="nextImg" alt="next"></div>
+      <div>
+        <div class="next-name" id="nextName">—</div>
+        <div class="next-hint">⬇ 下一個投放</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" id="restartBtn">🔄 重新開始</button>
+    </div>
+
+    <div class="section-title">飲料合併表（點擊查看圖片路徑）</div>
+    <div class="item-list" id="itemList"></div>
+
+    <div class="tip">
+      💡 <strong>小技巧：</strong>大杯放底部，小的往角落堆。連鎖合併可以一次升好幾級！<br><br>
+      📁 <strong>換圖方式：</strong>把你的圖放進 <code>assets/images/</code>，檔名對應下方列表，重整頁面即可。
+    </div>
+  </aside>
+
+  <section class="panel board-wrap">
+    <div class="board-shell" id="boardShell">
+      <div class="preview-token" id="previewToken"><img id="previewImg" alt="preview"></div>
+      <div class="drop-guide" id="dropGuide"></div>
+      <div class="overlay" id="gameOverOverlay">
+        <div class="overlay-card">
+          <div class="overlay-emoji">😵</div>
+          <h2>杯子溢出了！</h2>
+          <div class="overlay-score" id="finalScore">0</div>
+          <div class="overlay-best" id="finalBest"></div>
+          <p>再試一次吧，你做得到的！</p>
+          <button class="btn-primary" id="restartBtn2">🔄 再玩一次</button>
         </div>
-        <div class="card next-box">
-          <div>
-            <div class="label">Next</div>
-            <div style="font-size:12px;color:var(--muted)">下一顆</div>
-          </div>
-          <div class="next-preview"><img id="nextImg" alt="next"></div>
-        </div>
       </div>
+      <canvas id="game" width="540" height="800"></canvas>
+    </div>
+  </section>
+</div>
 
-      <div class="controls">
-        <button class="primary" id="restartBtn">🔄 重新開始</button>
-      </div>
+<script>
+// ================================================================
+//  ✏️  ITEMS 素材設定
+//  換圖：把你的圖放到下方 image 路徑對應的位置即可
+//  圖片建議：PNG、512x512px、圓形、透明背景
+//  如果圖片路徑找不到 → 自動顯示可愛 SVG 預設圖，不會出錯
+// ================================================================
+const ITEMS = [
+  { level:0, name:'小奶茶',     radius:22, score:10,  image:'./assets/images/item-1.png' },
+  { level:1, name:'珍珠奶茶',   radius:30, score:25,  image:'./assets/images/item-2.png' },
+  { level:2, name:'草莓奶昔',   radius:40, score:55,  image:'./assets/images/item-3.png' },
+  { level:3, name:'芒果特調',   radius:52, score:110, image:'./assets/images/item-4.png' },
+  { level:4, name:'西瓜汽水',   radius:64, score:220, image:'./assets/images/item-5.png' },
+  { level:5, name:'熱帶雞尾酒', radius:78, score:440, image:'./assets/images/item-6.png' },
+  { level:6, name:'傳說特調',   radius:94, score:880, image:'./assets/images/item-7.png' }
+];
 
-      <div class="legend">
-        📁 圖片放這裡：<strong>assets/images/item-1.png</strong> 到 <strong>item-5.png</strong><br>
-        修改 JS 裡的 <strong>ITEMS</strong> 陣列，換圖片路徑即可。<br>
-        建議：200×200px 以上、圓形、透明背景 PNG。
-      </div>
+// ================================================================
+//  🎨 預設可愛 SVG（圖片不存在時自動使用，不需修改）
+// ================================================================
+const DRINK_SVG = [
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#f9e4c8" stroke="#e8c99a" stroke-width="4"/><ellipse cx="100" cy="72" rx="38" ry="14" fill="#fff8ee" opacity=".7"/><rect x="70" y="80" width="60" height="68" rx="10" fill="#d4a96a"/><rect x="74" y="76" width="52" height="10" rx="5" fill="#ffe5c0"/><ellipse cx="100" cy="82" rx="26" ry="8" fill="#ffe5c0"/><rect x="90" y="60" width="6" height="22" rx="3" fill="#b8d4f0"/><circle cx="82" cy="104" r="4" fill="#c47a2a" opacity=".5"/><circle cx="100" cy="112" r="5" fill="#c47a2a" opacity=".5"/><circle cx="116" cy="102" r="4" fill="#c47a2a" opacity=".5"/><text x="100" y="168" font-family="Arial" font-size="18" font-weight="900" text-anchor="middle" fill="#c47a2a">小奶茶</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#ffe4b0" stroke="#f0c060" stroke-width="4"/><ellipse cx="100" cy="68" rx="40" ry="15" fill="#fff5e0" opacity=".7"/><rect x="66" y="76" width="68" height="76" rx="12" fill="#c8852a"/><rect x="70" y="70" width="60" height="12" rx="6" fill="#ffe8b0"/><ellipse cx="100" cy="78" rx="30" ry="9" fill="#ffe8b0"/><rect x="93" y="54" width="7" height="26" rx="3.5" fill="#80c0f0"/><circle cx="84" cy="108" r="6" fill="#3a2010"/><circle cx="100" cy="118" r="6" fill="#3a2010"/><circle cx="116" cy="108" r="6" fill="#3a2010"/><circle cx="92" cy="124" r="5" fill="#3a2010"/><circle cx="108" cy="124" r="5" fill="#3a2010"/><text x="100" y="170" font-family="Arial" font-size="16" font-weight="900" text-anchor="middle" fill="#7a4010">珍珠奶茶</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#ffe0ee" stroke="#f0a0c0" stroke-width="4"/><rect x="62" y="72" width="76" height="82" rx="14" fill="#f4709a"/><ellipse cx="100" cy="72" rx="38" ry="14" fill="#ffb0d0"/><ellipse cx="100" cy="64" rx="28" ry="16" fill="#fff" opacity=".9"/><ellipse cx="92" cy="62" rx="8" ry="6" fill="#fff" opacity=".6"/><rect x="93" y="44" width="7" height="24" rx="3.5" fill="#ff80a8"/><circle cx="96" cy="44" r="5" fill="#ff4070"/><path d="M96 39 Q100 32 104 39" stroke="#4a8" fill="none" stroke-width="2.5" stroke-linecap="round"/><circle cx="84" cy="98" r="5" fill="#fff" opacity=".5"/><circle cx="116" cy="106" r="4" fill="#fff" opacity=".5"/><text x="100" y="172" font-family="Arial" font-size="16" font-weight="900" text-anchor="middle" fill="#c0306a">草莓奶昔</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#fff0c0" stroke="#f0c030" stroke-width="4"/><rect x="58" y="68" width="84" height="86" rx="16" fill="#f7a200"/><ellipse cx="100" cy="68" rx="42" ry="16" fill="#ffe060"/><ellipse cx="100" cy="58" rx="30" ry="18" fill="#fff8d0" opacity=".9"/><rect x="92" y="36" width="8" height="28" rx="4" fill="#ff8800"/><path d="M84 102 Q100 90 116 102" stroke="#fff" fill="none" stroke-width="3" stroke-linecap="round" opacity=".6"/><circle cx="78" cy="114" r="6" fill="#ff8800" opacity=".5"/><circle cx="122" cy="110" r="5" fill="#ff8800" opacity=".5"/><text x="100" y="174" font-family="Arial" font-size="16" font-weight="900" text-anchor="middle" fill="#9a5a00">芒果特調</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#e0f8e8" stroke="#60c870" stroke-width="4"/><rect x="52" y="62" width="96" height="96" rx="18" fill="#f04060"/><ellipse cx="100" cy="62" rx="48" ry="18" fill="#70d880"/><ellipse cx="100" cy="50" rx="36" ry="20" fill="#b0eab8" opacity=".8"/><rect x="92" y="28" width="8" height="28" rx="4" fill="#20a830"/><circle cx="82" cy="96" r="5" fill="#1a0a08"/><circle cx="100" cy="108" r="5" fill="#1a0a08"/><circle cx="118" cy="96" r="5" fill="#1a0a08"/><circle cx="88" cy="116" r="4" fill="#1a0a08"/><circle cx="112" cy="116" r="4" fill="#1a0a08"/><text x="100" y="176" font-family="Arial" font-size="15" font-weight="900" text-anchor="middle" fill="#107a20">西瓜汽水</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#fff0f8" stroke="#d060c0" stroke-width="4"/><defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff80c0"/><stop offset="50%" stop-color="#ffa030"/><stop offset="100%" stop-color="#60d0a0"/></linearGradient></defs><polygon points="100,30 142,138 58,138" fill="url(#g5)"/><rect x="90" y="138" width="20" height="28" rx="4" fill="#e050a0"/><rect x="74" y="162" width="52" height="10" rx="5" fill="#d04090"/><rect x="97" y="16" width="7" height="18" rx="3.5" fill="#ff4080"/><circle cx="100" cy="15" r="7" fill="#ff4080"/><circle cx="97" cy="13" r="3" fill="#fff" opacity=".7"/><text x="100" y="186" font-family="Arial" font-size="12" font-weight="900" text-anchor="middle" fill="#902080">熱帶雞尾酒</text></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="96" fill="#fffbe0" stroke="#e0b800" stroke-width="5"/><defs><radialGradient id="gg" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#fff8c0"/><stop offset="50%" stop-color="#f0c000"/><stop offset="100%" stop-color="#c08000"/></radialGradient></defs><circle cx="100" cy="100" r="72" fill="url(#gg)"/><circle cx="100" cy="100" r="72" fill="none" stroke="#e0b800" stroke-width="4"/><circle cx="78" cy="80" r="14" fill="#fff" opacity=".25"/><text x="100" y="112" font-family="Arial" font-size="52" font-weight="900" text-anchor="middle" fill="#7a4a00">★</text><circle cx="62" cy="52" r="5" fill="#fff" opacity=".7"/><circle cx="138" cy="60" r="4" fill="#fff" opacity=".6"/><text x="100" y="178" font-family="Arial" font-size="13" font-weight="900" text-anchor="middle" fill="#7a4a00">傳說特調</text></svg>`
+];
 
-      <div class="item-list">
-        <div class="item-list-title">Items 對照表</div>
-        <div id="itemList"></div>
-      </div>
-    </aside>
+function svgToURL(svg) {
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const FALLBACK_URLS = DRINK_SVG.map(svgToURL);
 
-    <section class="panel board-wrap">
-      <div class="board-shell" id="boardShell">
-        <div class="preview-token" id="previewToken"><img id="previewImg" alt="preview"></div>
-        <div class="drop-guide" id="dropGuide"></div>
-        <div class="overlay" id="gameOverOverlay">
-          <div class="overlay-card">
-            <h2>Game Over</h2>
-            <p id="finalScore">你的分數：0</p>
-            <button class="primary" id="restartBtn2">再玩一次</button>
-          </div>
-        </div>
-        <canvas id="game" width="520" height="760"></canvas>
-      </div>
-    </section>
-  </div>
+const resolvedImages = new Array(ITEMS.length);
+let loadedCount = 0;
+function preloadImages(cb) {
+  ITEMS.forEach((item, i) => {
+    const img = new Image();
+    img.onload = () => { resolvedImages[i] = item.image; done(); };
+    img.onerror = () => { resolvedImages[i] = FALLBACK_URLS[i] || FALLBACK_URLS[0]; done(); };
+    img.src = item.image;
+    function done() { if (++loadedCount === ITEMS.length) cb(); }
+  });
+}
 
-  <script>
-    // ==============================================================
-    //  ✏️  在這裡修改你的素材
-    //  image: 填入圖片路徑，例如 './assets/images/item-1.png'
-    //  radius: 碰撞半徑 (px)，建議等比例遞增
-    //  score: 合併時得分
-    //  name: 顯示名稱
-    // ==============================================================
-    const ITEMS = [
-      { level: 0, name: 'Level 1', radius: 22, score: 10,  image: './assets/images/item-1.png' },
-      { level: 1, name: 'Level 2', radius: 30, score: 20,  image: './assets/images/item-2.png' },
-      { level: 2, name: 'Level 3', radius: 40, score: 40,  image: './assets/images/item-3.png' },
-      { level: 3, name: 'Level 4', radius: 52, score: 80,  image: './assets/images/item-4.png' },
-      { level: 4, name: 'Level 5', radius: 66, score: 160, image: './assets/images/item-5.png' }
-    ];
-    // ==============================================================
+const { Engine, Render, Runner, Bodies, Body, Composite, Events, Vector } = Matter;
 
-    const { Engine, Render, Runner, Bodies, Body, Composite, Events, Vector } = Matter;
+const canvas = document.getElementById('game');
+const boardShell = document.getElementById('boardShell');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const mergesEl = document.getElementById('merges');
+const maxlevelEl = document.getElementById('maxlevel');
+const nextImg = document.getElementById('nextImg');
+const nextName = document.getElementById('nextName');
+const previewToken = document.getElementById('previewToken');
+const previewImg = document.getElementById('previewImg');
+const dropGuide = document.getElementById('dropGuide');
+const overlay = document.getElementById('gameOverOverlay');
+const finalScoreEl = document.getElementById('finalScore');
+const finalBestEl = document.getElementById('finalBest');
+const itemListEl = document.getElementById('itemList');
+const restartBtns = [document.getElementById('restartBtn'), document.getElementById('restartBtn2')];
 
-    // 圖片不存在時，自動 fallback 到 SVG 色塊
-    const FALLBACK_COLORS = ['#7bc8a4','#f2a65a','#9c89ff','#ef6f6c','#01696f'];
-    function svgFallback(level) {
-      const labels = ['A','B','C','D','E'];
-      const bg = FALLBACK_COLORS[level] || '#aaa';
-      return `data:image/svg+xml;utf8,${encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-          <defs>
-            <radialGradient id="g" cx="35%" cy="30%" r="75%">
-              <stop offset="0%" stop-color="#ffffff55"/>
-              <stop offset="40%" stop-color="${bg}"/>
-              <stop offset="100%" stop-color="#00000018"/>
-            </radialGradient>
-          </defs>
-          <circle cx="128" cy="128" r="120" fill="url(#g)"/>
-          <circle cx="90" cy="82" r="30" fill="#ffffff22"/>
-          <text x="128" y="147" font-family="Inter,Arial,sans-serif" font-size="88" font-weight="800" text-anchor="middle" fill="#fff">${labels[level] || level}</text>
-        </svg>
-      `)};
-    }
+const W = canvas.width, H = canvas.height;
+const WALL_T = 40;
+const DROP_Y = 124;
+const GAME_OVER_Y = 158;
+const CUP_L = 50, CUP_R = 50, CUP_BOT = 28;
+const CUP_TOP_VIS = 148;
+const OVERFLOW_DELAY = 1400;
 
-    // 預載圖片，失敗就用 fallback
-    const resolvedImages = [];
-    let loadedCount = 0;
-    function preloadImages(callback) {
-      ITEMS.forEach((item, i) => {
-        const img = new Image();
-        img.onload = () => { resolvedImages[i] = item.image; check(); };
-        img.onerror = () => { resolvedImages[i] = svgFallback(i); check(); };
-        img.src = item.image;
-      });
-      function check() {
-        loadedCount++;
-        if (loadedCount === ITEMS.length) callback();
+let engine, render, runner;
+let score = 0, best = 0, merges = 0, maxLevel = 0;
+let currentX = W / 2, nextLevel = 0;
+let canDrop = true, isGameOver = false;
+let overflowStart = null;
+let comboCount = 0, comboTimer = null;
+
+function randLevel() { return Math.floor(Math.random() * Math.min(3, ITEMS.length)); }
+
+function updateStats() {
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+  mergesEl.textContent = merges;
+  maxlevelEl.textContent = maxLevel + 1;
+}
+
+function setNext(level) {
+  const src = resolvedImages[level];
+  nextImg.src = src;
+  nextName.textContent = ITEMS[level].name;
+  previewImg.src = src;
+  const sz = Math.max(50, Math.min(96, ITEMS[level].radius * 2));
+  previewToken.style.width = sz + 'px';
+  previewToken.style.height = sz + 'px';
+}
+
+function clampX(x, level) {
+  const r = ITEMS[level].radius;
+  return Math.max(CUP_L + r + 3, Math.min(W - CUP_R - r - 3, x));
+}
+
+function updatePreview() {
+  const rect = canvas.getBoundingClientRect();
+  const vx = (currentX / W) * rect.width;
+  previewToken.style.left = vx + 'px';
+  dropGuide.style.left = vx + 'px';
+}
+
+function showScorePop(x, y, pts, isCombo) {
+  const rect = canvas.getBoundingClientRect();
+  const vx = (x / W) * rect.width;
+  const vy = (y / H) * rect.height;
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.textContent = (isCombo ? '🔥x' + comboCount + ' ' : '') + '+' + pts;
+  el.style.left = vx + 'px';
+  el.style.top = vy + 'px';
+  if (isCombo) { el.style.fontSize = '23px'; el.style.color = '#f7a200'; }
+  boardShell.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+function showCombo(count) {
+  const old = boardShell.querySelector('.combo-badge');
+  if (old) old.remove();
+  if (count < 2) return;
+  const el = document.createElement('div');
+  el.className = 'combo-badge';
+  el.textContent = '🔥 ' + count + ' 連鎖合併！';
+  boardShell.appendChild(el);
+  if (comboTimer) clearTimeout(comboTimer);
+  comboTimer = setTimeout(() => el.remove(), 1600);
+}
+
+function makeBall(x, y, level) {
+  const item = ITEMS[level];
+  const body = Bodies.circle(x, y, item.radius, {
+    restitution: 0.08, friction: 0.03, frictionAir: 0.010, density: 0.0015,
+    render: {
+      sprite: {
+        texture: resolvedImages[level],
+        xScale: (item.radius * 2) / 200,
+        yScale: (item.radius * 2) / 200
       }
     }
+  });
+  body.level = level;
+  body.isMergeBall = true;
+  body.hasMerged = false;
+  return body;
+}
 
-    const canvas = document.getElementById('game');
-    const boardShell = document.getElementById('boardShell');
-    const scoreEl = document.getElementById('score');
-    const nextImg = document.getElementById('nextImg');
-    const previewToken = document.getElementById('previewToken');
-    const previewImg = document.getElementById('previewImg');
-    const dropGuide = document.getElementById('dropGuide');
-    const overlay = document.getElementById('gameOverOverlay');
-    const finalScore = document.getElementById('finalScore');
-    const restartBtns = [document.getElementById('restartBtn'), document.getElementById('restartBtn2')];
-    const itemListEl = document.getElementById('itemList');
+function buildItemList() {
+  itemListEl.innerHTML = '';
+  ITEMS.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML =
+      '<div class="item-thumb-sm"><img src="' + resolvedImages[i] + '" alt="' + item.name + '"></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="item-name">' + item.name + '</div>' +
+        '<div class="item-file">item-' + (i+1) + '.png</div>' +
+      '</div>' +
+      '<div class="item-pts">+' + item.score + '</div>';
+    itemListEl.appendChild(row);
+  });
+}
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const wallThickness = 40;
-    const dropY = 120;
-    const gameOverY = 152;
-    const cupLeft = 48;
-    const cupRight = 48;
-    const cupBottom = 26;
-    const cupTopVisual = 140;
-    const overflowDelayMs = 1300;
+function drawDecos() {
+  const ctx = render.context;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,240,248,0.30)';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(CUP_L, CUP_TOP_VIS, W - CUP_L - CUP_R, H - CUP_TOP_VIS - CUP_BOT + 20, 14);
+  } else {
+    ctx.rect(CUP_L, CUP_TOP_VIS, W - CUP_L - CUP_R, H - CUP_TOP_VIS - CUP_BOT + 20);
+  }
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(224,108,138,0.30)';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(CUP_L, CUP_TOP_VIS);
+  ctx.lineTo(CUP_L, H - CUP_BOT);
+  ctx.lineTo(W - CUP_R, H - CUP_BOT);
+  ctx.lineTo(W - CUP_R, CUP_TOP_VIS);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(239,130,50,0.68)';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([9, 7]);
+  ctx.beginPath();
+  ctx.moveTo(CUP_L + 16, GAME_OVER_Y);
+  ctx.lineTo(W - CUP_R - 16, GAME_OVER_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(239,130,50,0.82)';
+  ctx.font = 'bold 11.5px Inter, Arial, sans-serif';
+  ctx.fillText('▲ 爆杯警戒線', W - 176, GAME_OVER_Y - 8);
+  ctx.restore();
+}
 
-    let engine, render, runner;
-    let score = 0;
-    let currentX = width / 2;
-    let nextLevel = 0;
-    let canDrop = true;
-    let isGameOver = false;
-    let overflowStart = null;
+function createWorld() {
+  engine = Engine.create(); engine.gravity.y = 1.1;
+  render = Render.create({ canvas, engine, options: { width: W, height: H, wireframes: false, background: 'transparent' } });
+  const floor = Bodies.rectangle(W/2, H + WALL_T/2 - CUP_BOT, W - 60, WALL_T, { isStatic: true, render: { fillStyle: '#e8c8d8' } });
+  const lw = Bodies.rectangle(CUP_L/2, H/2+30, WALL_T, H-80, { isStatic: true, render: { fillStyle: '#f0d8e4' } });
+  const rw = Bodies.rectangle(W - CUP_R/2, H/2+30, WALL_T, H-80, { isStatic: true, render: { fillStyle: '#f0d8e4' } });
+  Composite.add(engine.world, [floor, lw, rw]);
+  Render.run(render);
+  runner = Runner.create();
+  Runner.run(runner, engine);
+  Events.on(engine, 'collisionStart', onCollision);
+  Events.on(engine, 'beforeUpdate', checkOverflow);
+  Events.on(render, 'afterRender', drawDecos);
+}
 
-    function buildItemList() {
-      itemListEl.innerHTML = '';
-      ITEMS.forEach((item, i) => {
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-          <div class="item-thumb"><img src="${resolvedImages[i]}" alt="${item.name}"></div>
-          <div class="item-info">
-            <div class="item-name">${item.name}</div>
-            <div class="item-meta">radius: ${item.radius}px &nbsp;·&nbsp; <span style="font-family:monospace">${item.image}</span></div>
-          </div>
-          <div class="item-score">+${item.score}</div>
-        `;
-        itemListEl.appendChild(row);
-      });
+function dropBall() {
+  if (!canDrop || isGameOver) return;
+  const level = nextLevel;
+  Composite.add(engine.world, makeBall(clampX(currentX, level), DROP_Y, level));
+  canDrop = false;
+  comboCount = 0;
+  nextLevel = randLevel();
+  setNext(nextLevel);
+  currentX = clampX(currentX, nextLevel);
+  updatePreview();
+  setTimeout(() => { canDrop = true; }, 260);
+}
+
+function onCollision(event) {
+  for (const pair of event.pairs) {
+    const a = pair.bodyA, b = pair.bodyB;
+    if (!a.isMergeBall || !b.isMergeBall) continue;
+    if (a.level !== b.level || a.hasMerged || b.hasMerged) continue;
+    const next = a.level + 1;
+    if (!ITEMS[next]) continue;
+    a.hasMerged = true; b.hasMerged = true;
+    const pos = Vector.create((a.position.x + b.position.x) / 2, (a.position.y + b.position.y) / 2);
+    const pts = ITEMS[next].score;
+    const lvl = next;
+    setTimeout(() => {
+      Composite.remove(engine.world, a);
+      Composite.remove(engine.world, b);
+      const merged = makeBall(pos.x, pos.y, lvl);
+      Composite.add(engine.world, merged);
+      comboCount++;
+      merges++;
+      if (lvl > maxLevel) maxLevel = lvl;
+      score += pts + (comboCount > 1 ? pts * (comboCount - 1) : 0);
+      if (score > best) best = score;
+      updateStats();
+      showScorePop(pos.x, pos.y, pts, comboCount > 1);
+      showCombo(comboCount);
+    }, 22);
+  }
+}
+
+function checkOverflow() {
+  if (isGameOver) return;
+  const over = Composite.allBodies(engine.world).some(b => {
+    if (!b.isMergeBall) return false;
+    return b.position.y - ITEMS[b.level].radius < GAME_OVER_Y;
+  });
+  if (over) {
+    if (!overflowStart) overflowStart = performance.now();
+    if (performance.now() - overflowStart > OVERFLOW_DELAY) {
+      isGameOver = true; canDrop = false;
+      overlay.classList.add('show');
+      finalScoreEl.textContent = score;
+      finalBestEl.textContent = score >= best ? '🏆 新紀錄！' : '最高分：' + best;
     }
+  } else { overflowStart = null; }
+}
 
-    function randSpawnLevel() { return Math.floor(Math.random() * Math.min(3, ITEMS.length)); }
-    function updateScore(v) { score = v; scoreEl.textContent = String(score); }
+function bindInput() {
+  canvas.addEventListener('mousemove', e => {
+    if (isGameOver) return;
+    const rect = canvas.getBoundingClientRect();
+    currentX = clampX(((e.clientX - rect.left) / rect.width) * W, nextLevel);
+    updatePreview();
+  });
+  canvas.addEventListener('click', () => dropBall());
 
-    function setNext(level) {
-      const src = resolvedImages[level];
-      nextImg.src = src;
-      previewImg.src = src;
-      const sz = Math.max(50, Math.min(90, ITEMS[level].radius * 2));
-      previewToken.style.width = sz + 'px';
-      previewToken.style.height = sz + 'px';
-    }
+  let touchStartX = 0;
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0], rect = canvas.getBoundingClientRect();
+    touchStartX = t.clientX;
+    currentX = clampX(((t.clientX - rect.left) / rect.width) * W, nextLevel);
+    updatePreview();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (isGameOver) return;
+    const t = e.touches[0], rect = canvas.getBoundingClientRect();
+    currentX = clampX(((t.clientX - rect.left) / rect.width) * W, nextLevel);
+    updatePreview();
+  }, { passive: false });
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (Math.abs(e.changedTouches[0].clientX - touchStartX) < 10) dropBall();
+  }, { passive: false });
 
-    function clampX(x, level) {
-      const r = ITEMS[level].radius;
-      return Math.max(cupLeft + r + 2, Math.min(width - cupRight - r - 2, x));
-    }
+  window.addEventListener('resize', updatePreview);
+}
 
-    function updatePreview() {
-      const rect = canvas.getBoundingClientRect();
-      const vx = (currentX / width) * rect.width;
-      previewToken.style.left = vx + 'px';
-      dropGuide.style.left = vx + 'px';
-    }
+function destroyWorld() {
+  if (render) {
+    Events.off(render, 'afterRender', drawDecos);
+    Render.stop(render);
+    render.canvas.getContext('2d').clearRect(0, 0, W, H);
+    render.textures = {};
+  }
+  if (runner) Runner.stop(runner);
+  if (engine) {
+    Events.off(engine, 'collisionStart', onCollision);
+    Events.off(engine, 'beforeUpdate', checkOverflow);
+    Composite.clear(engine.world, false);
+    Engine.clear(engine);
+  }
+}
 
-    function makeBall(x, y, level) {
-      const item = ITEMS[level];
-      const body = Bodies.circle(x, y, item.radius, {
-        restitution: 0.08, friction: 0.03, frictionAir: 0.01, density: 0.0015,
-        render: {
-          sprite: {
-            texture: resolvedImages[level],
-            xScale: (item.radius * 2) / 256,
-            yScale: (item.radius * 2) / 256
-          }
-        }
-      });
-      body.level = level;
-      body.isMergeBall = true;
-      body.hasMerged = false;
-      return body;
-    }
+function startGame() {
+  destroyWorld();
+  overlay.classList.remove('show');
+  score = 0; merges = 0; maxLevel = 0;
+  isGameOver = false; canDrop = true; overflowStart = null; comboCount = 0;
+  nextLevel = randLevel();
+  currentX = clampX(W / 2, nextLevel);
+  setNext(nextLevel);
+  updateStats();
+  createWorld();
+  updatePreview();
+}
 
-    function drawDecos() {
-      const ctx = render.context;
-      ctx.save();
-      // Cup outline
-      ctx.strokeStyle = 'rgba(1,105,111,0.30)';
-      ctx.lineWidth = 4;
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(cupLeft, cupTopVisual);
-      ctx.lineTo(cupLeft, height - cupBottom);
-      ctx.lineTo(width - cupRight, height - cupBottom);
-      ctx.lineTo(width - cupRight, cupTopVisual);
-      ctx.stroke();
-      // overflow warning line
-      ctx.strokeStyle = 'rgba(217,119,6,0.65)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 8]);
-      ctx.beginPath();
-      ctx.moveTo(cupLeft + 14, gameOverY);
-      ctx.lineTo(width - cupRight - 14, gameOverY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(217,119,6,0.78)';
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.fillText('▲ overflow line', width - 160, gameOverY - 7);
-      ctx.restore();
-    }
-
-    function createWorld() {
-      engine = Engine.create(); engine.gravity.y = 1;
-      render = Render.create({
-        canvas, engine,
-        options: { width, height, wireframes: false, background: 'transparent' }
-      });
-      const floor = Bodies.rectangle(width/2, height + wallThickness/2 - cupBottom, width - 60, wallThickness, { isStatic: true, render: { fillStyle: '#d2ccbf' } });
-      const lw = Bodies.rectangle(cupLeft/2, height/2+26, wallThickness, height-110, { isStatic: true, render: { fillStyle: '#dcd6c8' } });
-      const rw = Bodies.rectangle(width - cupRight/2, height/2+26, wallThickness, height-110, { isStatic: true, render: { fillStyle: '#dcd6c8' } });
-      Composite.add(engine.world, [floor, lw, rw]);
-      Render.run(render);
-      runner = Runner.create();
-      Runner.run(runner, engine);
-      Events.on(engine, 'collisionStart', onCollision);
-      Events.on(engine, 'beforeUpdate', checkOverflow);
-      Events.on(render, 'afterRender', drawDecos);
-    }
-
-    function dropBall() {
-      if (!canDrop || isGameOver) return;
-      const level = nextLevel;
-      const x = clampX(currentX, level);
-      Composite.add(engine.world, makeBall(x, dropY, level));
-      canDrop = false;
-      nextLevel = randSpawnLevel();
-      setNext(nextLevel);
-      currentX = clampX(currentX, nextLevel);
-      updatePreview();
-      setTimeout(() => { canDrop = true; }, 270);
-    }
-
-    function onCollision(event) {
-      for (const pair of event.pairs) {
-        const a = pair.bodyA, b = pair.bodyB;
-        if (!a.isMergeBall || !b.isMergeBall) continue;
-        if (a.level !== b.level) continue;
-        if (a.hasMerged || b.hasMerged) continue;
-        const next = a.level + 1;
-        if (!ITEMS[next]) continue;
-        a.hasMerged = true; b.hasMerged = true;
-        const pos = Vector.create((a.position.x+b.position.x)/2, (a.position.y+b.position.y)/2);
-        setTimeout(() => {
-          Composite.remove(engine.world, a);
-          Composite.remove(engine.world, b);
-          Composite.add(engine.world, makeBall(pos.x, pos.y, next));
-          updateScore(score + ITEMS[next].score);
-        }, 24);
-      }
-    }
-
-    function checkOverflow() {
-      if (isGameOver) return;
-      const over = Composite.allBodies(engine.world).some(body => {
-        if (!body.isMergeBall) return false;
-        return body.position.y - ITEMS[body.level].radius < gameOverY;
-      });
-      if (over) {
-        if (!overflowStart) overflowStart = performance.now();
-        if (performance.now() - overflowStart > overflowDelayMs) {
-          isGameOver = true; canDrop = false;
-          overlay.classList.add('show');
-          finalScore.textContent = `你的分數：${score}`;
-        }
-      } else { overflowStart = null; }
-    }
-
-    function bindInput() {
-      // Mouse
-      canvas.addEventListener('mousemove', e => {
-        if (isGameOver) return;
-        const rect = canvas.getBoundingClientRect();
-        currentX = clampX(((e.clientX - rect.left) / rect.width) * width, nextLevel);
-        updatePreview();
-      });
-      canvas.addEventListener('click', () => dropBall());
-
-      // Touch
-      let lastTouchX = null;
-      canvas.addEventListener('touchstart', e => {
-        e.preventDefault();
-        const t = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        lastTouchX = t.clientX;
-        currentX = clampX(((t.clientX - rect.left) / rect.width) * width, nextLevel);
-        updatePreview();
-      }, { passive: false });
-      canvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        if (isGameOver) return;
-        const t = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        currentX = clampX(((t.clientX - rect.left) / rect.width) * width, nextLevel);
-        updatePreview();
-      }, { passive: false });
-      canvas.addEventListener('touchend', e => {
-        e.preventDefault();
-        const t = e.changedTouches[0];
-        if (Math.abs(t.clientX - lastTouchX) < 8) dropBall();
-      }, { passive: false });
-
-      window.addEventListener('resize', updatePreview);
-    }
-
-    function destroyWorld() {
-      if (render) {
-        Events.off(render, 'afterRender', drawDecos);
-        Render.stop(render);
-        render.canvas.getContext('2d').clearRect(0, 0, width, height);
-        render.textures = {};
-      }
-      if (runner) Runner.stop(runner);
-      if (engine) {
-        Events.off(engine, 'collisionStart', onCollision);
-        Events.off(engine, 'beforeUpdate', checkOverflow);
-        Composite.clear(engine.world, false);
-        Engine.clear(engine);
-      }
-    }
-
-    function startGame() {
-      destroyWorld();
-      overlay.classList.remove('show');
-      updateScore(0);
-      isGameOver = false; canDrop = true; overflowStart = null;
-      nextLevel = randSpawnLevel();
-      currentX = clampX(width / 2, nextLevel);
-      setNext(nextLevel);
-      createWorld();
-      updatePreview();
-    }
-
-    restartBtns.forEach(btn => btn.addEventListener('click', startGame));
-    bindInput();
-    preloadImages(() => {
-      buildItemList();
-      startGame();
-    });
-  </script>
+restartBtns.forEach(btn => btn.addEventListener('click', startGame));
+bindInput();
+preloadImages(() => { buildItemList(); startGame(); });
+</script>
 </body>
 </html>
